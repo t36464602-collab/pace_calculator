@@ -1,0 +1,347 @@
+import React, { useState, useMemo } from 'react';
+import { Timer, MapPin, FastForward, ListOrdered, Info, RotateCcw, CircleDashed, Zap, Sliders, Activity, Trash2, Table } from 'lucide-react';
+
+// InputGroup 元件：處理數值輸入與點擊啟動邏輯
+const InputGroup = ({ label, value, onChange, unit, placeholder, max, isResult, onActivate }) => (
+  <div 
+    onClick={onActivate}
+    className={`flex flex-col flex-1 p-3 rounded-2xl transition-all border-2 cursor-pointer ${
+      isResult ? 'border-orange-500 bg-orange-50/50' : 'border-transparent bg-gray-50 hover:bg-gray-100'
+    }`}
+  >
+    <div className="flex justify-between items-center mb-1">
+      <label className={`text-xs font-bold uppercase ${isResult ? 'text-orange-600' : 'text-gray-500'}`}>
+        {label} {isResult && <span className="ml-1 text-[10px] bg-orange-500 text-white px-1 rounded shadow-sm animate-pulse">自動計算中</span>}
+      </label>
+    </div>
+    <div className="relative">
+      <input
+        type="number"
+        value={value}
+        onChange={(e) => {
+          const v = e.target.value;
+          // 允許空字串以供使用者刪除數值，但不允許超過 max
+          if (max && v !== "" && parseFloat(v) > max) return;
+          onChange(v);
+        }}
+        onFocus={(e) => {
+          e.target.select();
+          onActivate();
+        }}
+        placeholder={placeholder}
+        readOnly={isResult}
+        className={`w-full bg-transparent border-none p-0 focus:ring-0 text-lg font-bold outline-none cursor-text ${
+          isResult ? 'text-orange-700' : 'text-gray-800'
+        }`}
+      />
+      {unit && <span className="absolute right-0 top-1 text-gray-400 text-xs font-medium">{unit}</span>}
+    </div>
+  </div>
+);
+
+const App = () => {
+  const [tableType, setTableType] = useState('road');
+  const [distance, setDistance] = useState('42.195'); 
+  const [hours, setHours] = useState('4');
+  const [minutes, setMinutes] = useState('0');
+  const [seconds, setSeconds] = useState('0');
+  const [paceMin, setPaceMin] = useState('5');
+  const [paceSec, setPaceSec] = useState('41');
+
+  // 智慧模式：記錄最後編輯的兩個類別
+  const [lastTwoEdited, setLastTwoEdited] = useState(['distance', 'time']);
+
+  const ROAD_MILESTONES = [1, 5, 10, 15, 20, 21.0975, 25, 30, 35, 40, 42.195];
+  const TRACK_MILESTONES = [0.1, 0.2, 0.3, 0.4, 0.6, 0.8, 1.0, 1.2, 1.6, 2.0];
+
+  const handleActivate = (type) => {
+    setLastTwoEdited(prev => {
+      if (prev[0] === type) return prev;
+      return [type, prev[0]];
+    });
+  };
+
+  const resultMode = useMemo(() => {
+    if (!lastTwoEdited.includes('distance')) return 'distance';
+    if (!lastTwoEdited.includes('time')) return 'time';
+    return 'pace';
+  }, [lastTwoEdited]);
+
+  // 核心計算邏輯：將所有輸入轉為數字進行推算
+  const finalData = useMemo(() => {
+    let d = parseFloat(distance) || 0;
+    let t = (parseInt(hours) || 0) * 3600 + (parseInt(minutes) || 0) * 60 + (parseInt(seconds) || 0);
+    let p = (parseInt(paceMin) || 0) * 60 + (parseInt(paceSec) || 0);
+
+    let calculatedPace = p;
+    let calculatedTime = t;
+    let calculatedDist = d;
+
+    if (resultMode === 'pace' && d > 0 && t > 0) {
+      calculatedPace = t / d;
+    } else if (resultMode === 'time' && d > 0 && p > 0) {
+      calculatedTime = d * p;
+    } else if (resultMode === 'distance' && t > 0 && p > 0) {
+      calculatedDist = t / p;
+    }
+
+    const formatTime = (totalSec) => {
+      const h = Math.floor(totalSec / 3600);
+      const m = Math.floor((totalSec % 3600) / 60);
+      const s = Math.round(totalSec % 60);
+      return { 
+        h, m, s, 
+        str: h > 0 ? `${h}時 ${m}分 ${s}秒` : `${m}分 ${s}秒`,
+        clock: h > 0 ? `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}` : `${m}:${s.toString().padStart(2, '0')}`
+      };
+    };
+
+    const formatPace = (totalSec) => {
+      const m = Math.floor(totalSec / 60);
+      const s = Math.round(totalSec % 60);
+      return { m, s, str: `${m}'${s.toString().padStart(2, '0')}"` };
+    };
+
+    const paceForTable = resultMode === 'pace' ? (t/d) : p;
+    const milestones = tableType === 'road' ? ROAD_MILESTONES : TRACK_MILESTONES;
+    let displayPoints = [...milestones];
+    const targetD = resultMode === 'distance' ? calculatedDist : d;
+    
+    if (targetD > 0 && !displayPoints.includes(targetD)) {
+      displayPoints.push(targetD);
+    }
+    if (tableType === 'track') displayPoints = displayPoints.filter(point => point <= 2.0);
+    displayPoints.sort((a, b) => a - b);
+
+    const splits = (paceForTable > 0) ? displayPoints.map(point => {
+      const timeAtPoint = point * paceForTable;
+      const f = formatTime(timeAtPoint);
+      const ms = Math.floor((timeAtPoint % 1) * 10);
+      
+      let label = "";
+      if (tableType === 'track') {
+        label = point < 1 ? `${Math.round(point * 1000)}m` : `${point}km`;
+      } else {
+        if (Math.abs(point - 21.0975) < 0.0001) label = "21.0975km (半馬)";
+        else if (Math.abs(point - 42.195) < 0.0001) label = "42.195km (全馬)";
+        else label = `${point}km`;
+      }
+
+      return {
+        label,
+        time: (tableType === 'track' && timeAtPoint < 3600) ? `${f.m}:${f.s.toString().padStart(2, '0')}.${ms}` : f.clock,
+        isTotal: Math.abs(point - targetD) < 0.0001
+      };
+    }) : [];
+
+    return { dist: calculatedDist, time: formatTime(calculatedTime), pace: formatPace(calculatedPace), splits };
+  }, [distance, hours, minutes, seconds, paceMin, paceSec, resultMode, tableType]);
+
+  const reset = () => {
+    setDistance('0'); setHours('0'); setMinutes('0'); setSeconds('0'); setPaceMin('0'); setPaceSec('0');
+  };
+
+  // 處理距離欄位的顯示值（處理公尺與公里的轉換）
+  const displayDistanceValue = useMemo(() => {
+    // 如果距離欄位是計算結果，直接從計算結果拿
+    const d = resultMode === 'distance' ? finalData.dist : parseFloat(distance) || 0;
+    // 如果是田徑場模式，顯示公尺，否則顯示公里
+    if (tableType === 'track') {
+      return (d * 1000).toString();
+    }
+    return d.toString();
+  }, [distance, finalData.dist, resultMode, tableType]);
+
+  return (
+    <div className="min-h-screen bg-slate-50 p-4 md:p-8 font-sans text-gray-800">
+      <div className="max-w-6xl mx-auto space-y-6">
+        {/* Header */}
+        <div className="text-center">
+          <h1 className="text-3xl font-bold text-gray-900 mb-6 flex items-center justify-center gap-2">
+            <Activity className="text-orange-500 w-8 h-8" />
+            跑步配速計算器
+          </h1>
+        </div>
+
+        {/* Mode Switcher */}
+        <div className="bg-white p-1 rounded-2xl shadow-sm border border-gray-100 flex max-w-md mx-auto mb-8">
+          <button 
+            onClick={() => setTableType('road')}
+            className={`flex-1 flex items-center justify-center gap-2 py-3 text-sm font-bold rounded-xl transition-all ${tableType === 'road' ? 'bg-orange-500 text-white shadow-md' : 'text-gray-500 hover:bg-gray-50'}`}
+          >
+            <MapPin size={18} /> 路跑模式 (km)
+          </button>
+          <button 
+            onClick={() => setTableType('track')}
+            className={`flex-1 flex items-center justify-center gap-2 py-3 text-sm font-bold rounded-xl transition-all ${tableType === 'track' ? 'bg-orange-500 text-white shadow-md' : 'text-gray-500 hover:bg-gray-50'}`}
+          >
+            <Zap size={18} /> 田徑場模式 (m)
+          </button>
+        </div>
+
+        {/* Layout Wrapper */}
+        <div className="flex flex-col lg:grid lg:grid-cols-12 gap-6 items-stretch">
+          
+          {/* 1. Input Panel: Order 1 */}
+          <div className="lg:col-span-7 flex flex-col order-1">
+            <div className="bg-white p-6 md:p-8 rounded-3xl shadow-sm border border-gray-100 flex-grow space-y-8">
+              <div className="flex justify-between items-center border-b border-gray-50 pb-4">
+                <h3 className="font-bold flex items-center gap-2 text-gray-700">
+                  <Sliders size={20} className="text-orange-500" /> 數值輸入
+                </h3>
+                <button 
+                  onClick={reset} 
+                  className="flex items-center gap-2 bg-red-50 text-red-600 px-4 py-2 rounded-xl border border-red-100 hover:bg-red-600 hover:text-white transition-all font-bold text-sm shadow-sm"
+                >
+                  <Trash2 size={16} /> 清除全部數據
+                </button>
+              </div>
+
+              {/* Distance Input */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <label className="text-sm font-bold text-gray-600">目標距離</label>
+                  <div className="flex flex-wrap gap-1.5">
+                    {tableType === 'road' ? (
+                      [1, 5, 10, 21.0975, 42.195].map(d => (
+                        <button 
+                          key={d}
+                          onClick={() => { setDistance(d.toString()); handleActivate('distance'); }}
+                          className="px-3 py-1 text-[10px] bg-gray-100 hover:bg-orange-500 hover:text-white rounded-lg transition-all border border-transparent font-bold"
+                        >
+                          {d === 21.0975 ? '半馬' : d === 42.195 ? '全馬' : `${d}k`}
+                        </button>
+                      ))
+                    ) : (
+                      [200, 400, 800, 1600].map(m => (
+                        <button 
+                          key={m}
+                          onClick={() => { setDistance((m/1000).toString()); handleActivate('distance'); }}
+                          className="px-3 py-1 text-[10px] bg-gray-100 hover:bg-orange-500 hover:text-white rounded-lg transition-all border border-transparent font-bold"
+                        >
+                          {m}m
+                        </button>
+                      ))
+                    )}
+                  </div>
+                </div>
+                <InputGroup 
+                  label="距離"
+                  value={displayDistanceValue} 
+                  onChange={(v) => { 
+                    // 如果是田徑場模式，使用者輸入的是公尺，我們要存公里
+                    const kmVal = tableType === 'track' ? (parseFloat(v) / 1000 || 0) : v;
+                    setDistance(kmVal.toString()); 
+                  }} 
+                  onActivate={() => handleActivate('distance')}
+                  unit={tableType === 'road' ? "公里 (km)" : "公尺 (m)"}
+                  isResult={resultMode === 'distance'}
+                />
+              </div>
+
+              {/* Time Input */}
+              <div className="space-y-4">
+                <label className="text-sm font-bold text-gray-600">
+                  {tableType === 'road' ? '總時間' : '單組時間'}
+                </label>
+                <div className="flex gap-3">
+                  <InputGroup label="時" value={resultMode === 'time' ? finalData.time.h : hours} onChange={(v) => {setHours(v); handleActivate('time');}} onActivate={() => handleActivate('time')} isResult={resultMode === 'time'} />
+                  <InputGroup label="分" value={resultMode === 'time' ? finalData.time.m : minutes} onChange={(v) => {setMinutes(v); handleActivate('time');}} onActivate={() => handleActivate('time')} max={59} isResult={resultMode === 'time'} />
+                  <InputGroup label="秒" value={resultMode === 'time' ? finalData.time.s : seconds} onChange={(v) => {setSeconds(v); handleActivate('time');}} onActivate={() => handleActivate('time')} max={59} isResult={resultMode === 'time'} />
+                </div>
+              </div>
+
+              {/* Pace Input */}
+              <div className="space-y-4">
+                <label className="text-sm font-bold text-gray-600">平均配速</label>
+                <div className="flex gap-3">
+                  <InputGroup label="分" value={resultMode === 'pace' ? finalData.pace.m : paceMin} onChange={(v) => {setPaceMin(v); handleActivate('pace');}} onActivate={() => handleActivate('pace')} isResult={resultMode === 'pace'} />
+                  <InputGroup label="秒" value={resultMode === 'pace' ? finalData.pace.s : paceSec} onChange={(v) => {setPaceSec(v); handleActivate('pace');}} onActivate={() => handleActivate('pace')} max={59} isResult={resultMode === 'pace'} />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* 2. Result Display: Order 2 mobile, Order 3 desktop */}
+          <div className="lg:col-span-12 order-2 lg:order-3">
+            <div className="bg-gradient-to-br from-slate-800 to-slate-900 p-8 rounded-3xl text-white shadow-xl relative overflow-hidden">
+              <div className="absolute top-0 right-0 p-8 opacity-10">
+                <Timer size={140} />
+              </div>
+              <div className="relative z-10">
+                <p className="text-slate-400 text-sm font-medium mb-1 uppercase tracking-wider">計算結果</p>
+                <div className="text-5xl md:text-7xl font-black mb-6 text-orange-400">
+                  {resultMode === 'pace' ? finalData.pace.str : resultMode === 'time' ? finalData.time.clock : (tableType === 'track' ? Math.round(finalData.dist * 1000) : finalData.dist.toFixed(2))}
+                  <span className="text-3xl ml-3 font-normal text-white opacity-60">
+                    {resultMode === 'pace' ? '/ km' : resultMode === 'distance' ? (tableType === 'track' ? 'm' : 'km') : ''}
+                  </span>
+                </div>
+                <div className="flex items-start gap-2 text-slate-300 text-sm bg-white/5 p-4 rounded-xl border border-white/10 max-w-2xl">
+                  <div className="mt-0.5 shrink-0 bg-orange-500/20 p-1 rounded">
+                    <Info size={16} className="text-orange-500" />
+                  </div>
+                  <span>
+                    系統正在自動計算 <strong className="text-orange-400">{resultMode === 'distance' ? '目標距離' : resultMode === 'time' ? (tableType === 'road' ? '總完賽時間' : '單組時間') : '平均配速'}</strong>。
+                    點擊欄位即可切換為手動輸入。
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* 3. Split Table: Order 3 mobile, Order 2 desktop */}
+          <div className="lg:col-span-5 flex flex-col order-3 lg:order-2">
+            <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden flex flex-col h-full min-h-[500px]">
+              <div className="p-4 border-b border-gray-50 bg-gray-50/50">
+                <h3 className="font-bold flex items-center gap-2 text-gray-700">
+                  <ListOrdered size={20} className="text-orange-500" />
+                  分段時間對照表
+                </h3>
+              </div>
+              
+              <div className="overflow-y-auto max-h-[600px] flex-grow">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="text-[10px] uppercase text-gray-400 bg-white sticky top-0 border-b border-gray-50 z-10">
+                      <th className="px-5 py-3 font-medium">距離</th>
+                      <th className="px-5 py-3 font-medium text-right">累計時間</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-50">
+                    {finalData.splits.length > 0 ? (
+                      finalData.splits.map((split, idx) => (
+                        <tr key={idx} className={`hover:bg-orange-50/30 transition-colors group ${split.isTotal ? 'bg-orange-50/80' : ''}`}>
+                          <td className={`px-5 py-3 text-sm font-bold ${split.isTotal ? 'text-orange-600' : 'text-gray-700'}`}>
+                            {split.label}
+                          </td>
+                          <td className={`px-5 py-3 text-right font-mono text-sm ${split.isTotal ? 'text-orange-600 font-bold' : 'text-gray-600'}`}>
+                            {split.time}
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan="2" className="px-4 py-10 text-center text-gray-400 italic text-xs">請輸入數據產生表格</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+              <div className="p-4 bg-orange-50 text-[10px] text-orange-700 flex items-start gap-2 leading-relaxed border-t border-orange-100 mt-auto">
+                <CircleDashed size={14} className="shrink-0 mt-0.5" />
+                <span>
+                  {tableType === 'road' 
+                    ? '路跑模式顯示馬拉松及長距離重點里程。' 
+                    : '田徑場模式顯示每 100m 分段秒數。'}
+                </span>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default App;
