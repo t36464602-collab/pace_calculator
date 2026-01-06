@@ -46,19 +46,23 @@
     <div id="root"></div>
 
     <script type="text/babel">
-        const { useState, useEffect, useMemo, useCallback } = React;
+        const { useState, useEffect, useMemo, useCallback, useRef } = React;
 
-        // 簡易 Lucide 圖標組件
+        // 修正後的 Lucide 圖標組件：使用 ref 防止 React reconciliation 錯誤
         const Icon = ({ name, size = 20, className = "" }) => {
+            const containerRef = useRef(null);
+
             useEffect(() => {
-                if (window.lucide && typeof window.lucide.createIcons === 'function') {
-                    window.lucide.createIcons();
+                if (window.lucide && containerRef.current) {
+                    // 清空容器並注入初始 i 標籤，讓 lucide 進行轉換
+                    containerRef.current.innerHTML = `<i data-lucide="${name}" class="${className}" style="width: ${size}px; height: ${size}px;"></i>`;
+                    window.lucide.createIcons({
+                        root: containerRef.current
+                    });
                 }
-            }, [name, className]);
-            
-            // Tailwind 寬高轉換
-            const sizeClass = `w-${Math.ceil(size/4)} h-${Math.ceil(size/4)}`;
-            return <i data-lucide={name} className={`${sizeClass} ${className} inline-block`}></i>;
+            }, [name, size, className]);
+
+            return <span ref={containerRef} className="inline-flex items-center justify-center leading-none"></span>;
         };
 
         const App = () => {
