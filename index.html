@@ -3,470 +3,401 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>跑步配速計算器 - 智慧型路跑與田徑模式</title>
+    <title>Pacer Pro - 專業跑步配速計算器</title>
+    <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- React & Babel CDNs -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;900&display=swap" rel="stylesheet">
     <style>
-        body { font-family: 'Inter', sans-serif; }
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Noto+Sans+TC:wght@400;700;900&family=JetBrains+Mono:wght@700&display=swap');
+        
+        body {
+            font-family: 'Inter', 'Noto Sans TC', sans-serif;
+        }
+
+        .font-mono-run {
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        /* 隱藏輸入框的上下箭頭 */
         input::-webkit-outer-spin-button,
-        input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
-        .is-result { border-color: #f97316 !important; background-color: #fff7ed !important; }
-        .is-result-text { color: #ea580c !important; }
-        .animate-pulse-fast { animation: pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
-        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }
+        input::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        input[type=number] {
+            -moz-appearance: textfield;
+        }
+
+        .grid-rows-road {
+            grid-template-rows: repeat(6, minmax(0, 1fr));
+        }
+
+        .grid-rows-track {
+            grid-template-rows: repeat(4, minmax(0, 1fr));
+        }
     </style>
 </head>
-<body class="bg-slate-50 p-4 md:p-8 text-gray-800">
+<body class="bg-slate-50">
+    <div id="root"></div>
 
-    <div class="max-w-6xl mx-auto space-y-6">
-        <!-- Header -->
-        <div class="text-center">
-            <h1 class="text-3xl font-bold text-gray-900 mb-6 flex items-center justify-center gap-2">
-                <i data-lucide="activity" class="text-orange-500 w-8 h-8"></i>
-                跑步配速計算器
-            </h1>
-        </div>
+    <script type="text/babel">
+        const { useState, useEffect, useMemo } = React;
 
-        <!-- Mode Switcher -->
-        <div class="bg-white p-1 rounded-2xl shadow-sm border border-gray-100 flex max-w-md mx-auto mb-8">
-            <button id="btn-road" class="flex-1 flex items-center justify-center gap-2 py-3 text-sm font-bold rounded-xl transition-all bg-orange-500 text-white shadow-md">
-                <i data-lucide="map-pin" size="18"></i> 路跑模式 (km)
-            </button>
-            <button id="btn-track" class="flex-1 flex items-center justify-center gap-2 py-3 text-sm font-bold rounded-xl transition-all text-gray-500 hover:bg-gray-50">
-                <i data-lucide="zap" size="18"></i> 田徑場模式 (m)
-            </button>
-        </div>
-
-        <!-- Main Layout -->
-        <div class="flex flex-col lg:grid lg:grid-cols-12 gap-6 items-stretch">
-            
-            <!-- 1. Input Panel -->
-            <div class="lg:col-span-7 flex flex-col order-1">
-                <div class="bg-white p-6 md:p-8 rounded-3xl shadow-sm border border-gray-100 flex-grow space-y-8">
-                    <div class="flex justify-between items-center border-b border-gray-50 pb-4">
-                        <h3 class="font-bold flex items-center gap-2 text-gray-700">
-                            <i data-lucide="sliders" size="20" class="text-orange-500"></i> 數值輸入
-                        </h3>
-                        <button id="btn-reset" class="flex items-center gap-2 bg-red-50 text-red-600 px-4 py-2 rounded-xl border border-red-100 hover:bg-red-600 hover:text-white transition-all font-bold text-sm shadow-sm">
-                            <i data-lucide="trash-2" size="16"></i> 清除全部數據
-                        </button>
-                    </div>
-
-                    <!-- Distance Input -->
-                    <div class="space-y-4">
-                        <div class="flex items-center justify-between">
-                            <label class="text-sm font-bold text-gray-600">目標距離</label>
-                            <div id="presets-container" class="flex flex-wrap gap-1.5">
-                                <!-- Presets will be injected here -->
-                            </div>
-                        </div>
-                        <div id="group-distance" class="flex flex-col flex-1 p-3 rounded-2xl transition-all border-2 bg-gray-50 cursor-pointer border-transparent hover:bg-gray-100">
-                            <div class="flex justify-between items-center mb-1">
-                                <label class="text-xs font-bold uppercase text-gray-500 label-text">距離</label>
-                            </div>
-                            <div class="relative">
-                                <input type="number" id="input-distance" class="w-full bg-transparent border-none p-0 focus:ring-0 text-lg font-bold outline-none cursor-text text-gray-800" placeholder="0">
-                                <span id="unit-distance" class="absolute right-0 top-1 text-gray-400 text-xs font-medium">公里 (km)</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Time Input -->
-                    <div class="space-y-4">
-                        <label id="label-time" class="text-sm font-bold text-gray-600">總時間</label>
-                        <div class="flex gap-3">
-                            <div id="group-h" class="input-group-time flex flex-col flex-1 p-3 rounded-2xl transition-all border-2 bg-gray-50 border-transparent">
-                                <label class="text-[10px] font-bold uppercase text-gray-400">時</label>
-                                <input type="number" id="input-h" class="w-full bg-transparent border-none p-0 focus:ring-0 text-lg font-bold outline-none" placeholder="0">
-                            </div>
-                            <div id="group-m" class="input-group-time flex flex-col flex-1 p-3 rounded-2xl transition-all border-2 bg-gray-50 border-transparent">
-                                <label class="text-[10px] font-bold uppercase text-gray-400">分</label>
-                                <input type="number" id="input-m" class="w-full bg-transparent border-none p-0 focus:ring-0 text-lg font-bold outline-none" placeholder="0">
-                            </div>
-                            <div id="group-s" class="input-group-time flex flex-col flex-1 p-3 rounded-2xl transition-all border-2 bg-gray-50 border-transparent">
-                                <label class="text-[10px] font-bold uppercase text-gray-400">秒</label>
-                                <input type="number" id="input-s" class="w-full bg-transparent border-none p-0 focus:ring-0 text-lg font-bold outline-none" placeholder="0">
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Pace Input -->
-                    <div class="space-y-4">
-                        <label class="text-sm font-bold text-gray-600">平均配速</label>
-                        <div class="flex gap-3">
-                            <div id="group-pm" class="input-group-pace flex flex-col flex-1 p-3 rounded-2xl transition-all border-2 bg-gray-50 border-transparent">
-                                <label class="text-[10px] font-bold uppercase text-gray-400">分</label>
-                                <input type="number" id="input-pm" class="w-full bg-transparent border-none p-0 focus:ring-0 text-lg font-bold outline-none" placeholder="0">
-                            </div>
-                            <div id="group-ps" class="input-group-pace flex flex-col flex-1 p-3 rounded-2xl transition-all border-2 bg-gray-50 border-transparent">
-                                <label class="text-[10px] font-bold uppercase text-gray-400">秒</label>
-                                <input type="number" id="input-ps" class="w-full bg-transparent border-none p-0 focus:ring-0 text-lg font-bold outline-none" placeholder="0">
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- 2. Result Display -->
-            <div class="lg:col-span-12 order-2 lg:order-3">
-                <div class="bg-gradient-to-br from-slate-800 to-slate-900 p-8 rounded-3xl text-white shadow-xl relative overflow-hidden">
-                    <div class="absolute top-0 right-0 p-8 opacity-10">
-                        <i data-lucide="timer" style="width: 140px; height: 140px;"></i>
-                    </div>
-                    <div class="relative z-10">
-                        <p class="text-slate-400 text-sm font-medium mb-1 uppercase tracking-wider">計算結果</p>
-                        <div id="result-main" class="text-5xl md:text-7xl font-black mb-6 text-orange-400">
-                            --
-                            <span id="result-unit" class="text-3xl ml-3 font-normal text-white opacity-60"></span>
-                        </div>
-                        <div class="flex items-start gap-2 text-slate-300 text-sm bg-white/5 p-4 rounded-xl border border-white/10 max-w-2xl">
-                            <div class="mt-0.5 shrink-0 bg-orange-500/20 p-1 rounded">
-                                <i data-lucide="info" size="16" class="text-orange-500"></i>
-                            </div>
-                            <span id="result-info">
-                                請輸入數據以開始計算。
-                            </span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- 3. Split Table -->
-            <div class="lg:col-span-5 flex flex-col order-3 lg:order-2">
-                <div class="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden flex flex-col h-full min-h-[500px]">
-                    <div class="p-4 border-b border-gray-50 bg-gray-50/50">
-                        <h3 class="font-bold flex items-center gap-2 text-gray-700">
-                            <i data-lucide="list-ordered" size="20" class="text-orange-500"></i>
-                            分段時間對照表
-                        </h3>
-                    </div>
-                    
-                    <div class="overflow-y-auto max-h-[600px] flex-grow">
-                        <table class="w-full text-left border-collapse">
-                            <thead>
-                                <tr class="text-[10px] uppercase text-gray-400 bg-white sticky top-0 border-b border-gray-50 z-10">
-                                    <th class="px-5 py-3 font-medium">距離</th>
-                                    <th class="px-5 py-3 font-medium text-right">累計時間</th>
-                                </tr>
-                            </thead>
-                            <tbody id="splits-body" class="divide-y divide-gray-50">
-                                <!-- Splits will be injected here -->
-                            </tbody>
-                        </table>
-                    </div>
-                    <div id="table-footer" class="p-4 bg-orange-50 text-[10px] text-orange-700 flex items-start gap-2 leading-relaxed border-t border-orange-100 mt-auto">
-                        <i data-lucide="circle-dashed" size="14" class="shrink-0 mt-0.5"></i>
-                        <span id="footer-note">路跑模式顯示馬拉松及長距離重點里程。</span>
-                    </div>
-                </div>
-            </div>
-
-        </div>
-    </div>
-
-    <script>
-        // 初始化 Lucide 圖標
-        lucide.createIcons();
-
-        // 狀態管理
-        let state = {
-            tableType: 'road', // 'road' or 'track'
-            distance: 42.195,  // 永遠儲存為 km
-            hours: 4,
-            minutes: 0,
-            seconds: 0,
-            paceMin: 5,
-            paceSec: 41,
-            lastTwoEdited: ['distance', 'time'] // 智慧模式：這兩個是輸入，第三個是結果
+        // 簡易 Lucide 圖標組件
+        const Icon = ({ name, size = 20, className = "" }) => {
+            useEffect(() => {
+                if (window.lucide) {
+                    window.lucide.createIcons();
+                }
+            }, [name, className]);
+            return <i data-lucide={name} className={`inline-block w-${size/4} h-${size/4} ${className}`}></i>;
         };
 
-        const ROAD_MILESTONES = [1, 5, 10, 15, 20, 21.0975, 25, 30, 35, 40, 42.195];
-        const TRACK_MILESTONES = [0.1, 0.2, 0.3, 0.4, 0.6, 0.8, 1.0, 1.2, 1.6, 2.0];
-
-        // 元素選取
-        const els = {
-            btnRoad: document.getElementById('btn-road'),
-            btnTrack: document.getElementById('btn-track'),
-            btnReset: document.getElementById('btn-reset'),
-            presetsContainer: document.getElementById('presets-container'),
-            inputDistance: document.getElementById('input-distance'),
-            inputH: document.getElementById('input-h'),
-            inputM: document.getElementById('input-m'),
-            inputS: document.getElementById('input-s'),
-            inputPm: document.getElementById('input-pm'),
-            inputPs: document.getElementById('input-ps'),
-            unitDistance: document.getElementById('unit-distance'),
-            labelTime: document.getElementById('label-time'),
-            resultMain: document.getElementById('result-main'),
-            resultUnit: document.getElementById('result-unit'),
-            resultInfo: document.getElementById('result-info'),
-            splitsBody: document.getElementById('splits-body'),
-            footerNote: document.getElementById('footer-note'),
-            groups: {
-                distance: document.getElementById('group-distance'),
-                time: [document.getElementById('group-h'), document.getElementById('group-m'), document.getElementById('group-s')],
-                pace: [document.getElementById('group-pm'), document.getElementById('group-ps')]
-            }
-        };
-
-        // 核心計算與更新函數
-        function update() {
-            const resultMode = getResultMode();
-            const data = calculate(resultMode);
-            render(data, resultMode);
-        }
-
-        function getResultMode() {
-            if (!state.lastTwoEdited.includes('distance')) return 'distance';
-            if (!state.lastTwoEdited.includes('time')) return 'time';
-            return 'pace';
-        }
-
-        function handleActivate(type) {
-            if (state.lastTwoEdited[0] !== type) {
-                state.lastTwoEdited = [type, state.lastTwoEdited[0]];
-                update();
-            }
-        }
-
-        function calculate(resultMode) {
-            let d = state.distance || 0;
-            let t = state.hours * 3600 + state.minutes * 60 + state.seconds;
-            let p = state.paceMin * 60 + state.paceSec;
-
-            let calcPace = p;
-            let calcTime = t;
-            let calcDist = d;
-
-            if (resultMode === 'pace' && d > 0 && t > 0) {
-                calcPace = t / d;
-            } else if (resultMode === 'time' && d > 0 && p > 0) {
-                calcTime = d * p;
-            } else if (resultMode === 'distance' && t > 0 && p > 0) {
-                calcDist = t / p;
-            }
-
-            // 格式化函數
-            const formatT = (s) => {
-                const h = Math.floor(s / 3600);
-                const m = Math.floor((s % 3600) / 60);
-                const sec = Math.round(s % 60);
-                return { 
-                    h, m, s: sec, 
-                    clock: h > 0 ? `${h}:${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}` : `${m}:${String(sec).padStart(2, '0')}`
-                };
-            };
-
-            const formatP = (s) => {
-                const m = Math.floor(s / 60);
-                const sec = Math.round(s % 60);
-                return { m, s: sec, str: `${m}'${String(sec).padStart(2, '0')}"` };
-            };
-
-            // 分段表計算
-            const paceForTable = (resultMode === 'pace' && d > 0) ? (t / d) : calcPace;
-            const milestones = state.tableType === 'road' ? ROAD_MILESTONES : TRACK_MILESTONES;
-            let points = [...milestones];
-            const targetD = resultMode === 'distance' ? calcDist : d;
+        const App = () => {
+            // 輸入狀態
+            const [tableType, setTableType] = useState('road'); // 'road' | 'track'
+            const [distance, setDistance] = useState(''); 
+            const [hours, setHours] = useState('');
+            const [minutes, setMinutes] = useState('');
+            const [seconds, setSeconds] = useState('');
+            const [paceMin, setPaceMin] = useState('');
+            const [paceSec, setPaceSec] = useState('');
             
-            if (targetD > 0 && !points.some(p => Math.abs(p - targetD) < 0.0001)) {
-                points.push(targetD);
-            }
-            if (state.tableType === 'track') points = points.filter(p => p <= 2.0001);
-            points.sort((a, b) => a - b);
+            // 顯示結果狀態
+            const [displayResults, setDisplayResults] = useState(null);
+            
+            // 計算目標：'pace' | 'distance' | 'time'
+            const [calcTarget, setCalcTarget] = useState('pace');
 
-            const splits = (paceForTable > 0) ? points.map(pt => {
-                const timeAtPt = pt * paceForTable;
-                const f = formatT(timeAtPt);
-                const ms = Math.floor((timeAtPt % 1) * 10);
-                let label = "";
-                if (state.tableType === 'track') {
-                    label = pt < 1 ? `${Math.round(pt * 1000)}m` : `${pt}km`;
-                } else {
-                    if (Math.abs(pt - 21.0975) < 0.0001) label = "21.0975km (半馬)";
-                    else if (Math.abs(pt - 42.195) < 0.0001) label = "42.195km (全馬)";
-                    else label = `${pt}km`;
+            // 常數定義
+            const ROAD_MILESTONES = [1, 5, 10, 15, 20, 21.0975, 25, 30, 35, 40, 42.195];
+            const TRACK_MILESTONES = [0.1, 0.2, 0.3, 0.4, 0.8, 1.0, 1.6, 2.0];
+
+            // 輔助函式：時間格式化
+            const formatSecondsToTime = (totalSec, type) => {
+                const h = Math.floor(totalSec / 3600);
+                const m = Math.floor((totalSec % 3600) / 60);
+                const s = Math.round(totalSec % 60);
+                
+                if (type === 'track') {
+                    const totalMin = Math.floor(totalSec / 60);
+                    return { h: 0, m: totalMin, s, clock: `${totalMin}:${s.toString().padStart(2, '0')}` };
                 }
                 return {
-                    label,
-                    time: (state.tableType === 'track' && timeAtPt < 3600) ? `${f.m}:${String(f.s).padStart(2, '0')}.${ms}` : f.clock,
-                    isTotal: Math.abs(pt - targetD) < 0.0001
+                    h, m, s,
+                    clock: h > 0 ? `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}` : `${m}:${s.toString().padStart(2, '0')}`
                 };
-            }) : [];
-
-            return { 
-                dist: calcDist, 
-                time: formatT(calcTime), 
-                pace: formatP(calcPace), 
-                splits 
             };
-        }
 
-        function render(data, resultMode) {
-            // 1. 更新輸入框的值 (僅更新被標記為結果的欄位，或當初次載入時)
-            if (resultMode === 'distance') {
-                const displayD = state.tableType === 'track' ? Math.round(data.dist * 1000) : data.dist.toFixed(2);
-                els.inputDistance.value = displayD;
-            } else if (resultMode === 'time') {
-                els.inputH.value = data.time.h;
-                els.inputM.value = data.time.m;
-                els.inputS.value = data.time.s;
-            } else if (resultMode === 'pace') {
-                els.inputPm.value = data.pace.m;
-                els.inputPs.value = data.pace.s;
-            }
+            const formatPaceParts = (totalSec) => {
+                const m = Math.floor(totalSec / 60);
+                const s = Math.round(totalSec % 60);
+                return { m, s, str: `${m}'${s.toString().padStart(2, '0')}"` };
+            };
 
-            // 2. 更新視覺狀態 (Highlight 結果欄位)
-            updateGroupStyle('distance', resultMode === 'distance');
-            updateGroupStyle('time', resultMode === 'time');
-            updateGroupStyle('pace', resultMode === 'pace');
+            // 手動執行計算
+            const handleStartCalc = () => {
+                let d = parseFloat(distance) || 0;
+                let t = (parseInt(hours) || 0) * 3600 + (parseInt(minutes) || 0) * 60 + (parseInt(seconds) || 0);
+                let p = (parseInt(paceMin) || 0) * 60 + (parseInt(paceSec) || 0);
 
-            // 3. 更新主結果顯示
-            let resultText = "--";
-            let unitText = "";
-            let infoTarget = "";
+                let calcPace = p;
+                let calcTime = t;
+                let calcDist = d;
 
-            if (resultMode === 'pace') {
-                resultText = data.pace.str;
-                unitText = "/ km";
-                infoTarget = "平均配速";
-            } else if (resultMode === 'time') {
-                resultText = data.time.clock;
-                unitText = "";
-                infoTarget = state.tableType === 'road' ? '總完賽時間' : '單組時間';
-            } else {
-                resultText = state.tableType === 'track' ? Math.round(data.dist * 1000) : data.dist.toFixed(2);
-                unitText = state.tableType === 'track' ? "m" : "km";
-                infoTarget = "目標距離";
-            }
-
-            els.resultMain.innerHTML = `${resultText} <span class="text-3xl ml-3 font-normal text-white opacity-60">${unitText}</span>`;
-            els.resultInfo.innerHTML = `系統正在自動計算 <strong class="text-orange-400">${infoTarget}</strong>。點擊欄位即可切換為手動輸入。`;
-
-            // 4. 更新分段表
-            els.splitsBody.innerHTML = data.splits.length > 0 ? data.splits.map(s => `
-                <tr class="hover:bg-orange-50/30 transition-colors group ${s.isTotal ? 'bg-orange-50/80' : ''}">
-                    <td class="px-5 py-3 text-sm font-bold ${s.isTotal ? 'text-orange-600' : 'text-gray-700'}">${s.label}</td>
-                    <td class="px-5 py-3 text-right font-mono text-sm ${s.isTotal ? 'text-orange-600 font-bold' : 'text-gray-600'}">${s.time}</td>
-                </tr>
-            `).join('') : `<tr><td colspan="2" class="px-4 py-10 text-center text-gray-400 italic text-xs">請輸入數據產生表格</td></tr>`;
-
-            // 5. 更新模式相關 UI
-            els.unitDistance.innerText = state.tableType === 'road' ? "公里 (km)" : "公尺 (m)";
-            els.labelTime.innerText = state.tableType === 'road' ? '總時間' : '單組時間';
-            els.footerNote.innerText = state.tableType === 'road' ? '路跑模式顯示馬拉松及長距離重點里程。' : '田徑場模式顯示每 100m 分段秒數。';
-            
-            renderPresets();
-        }
-
-        function updateGroupStyle(type, isResult) {
-            const targets = type === 'distance' ? [els.groups.distance] : (type === 'time' ? els.groups.time : els.groups.pace);
-            targets.forEach(el => {
-                if (isResult) {
-                    el.classList.add('is-result');
-                    el.classList.remove('bg-gray-50', 'hover:bg-gray-100', 'border-transparent');
-                } else {
-                    el.classList.remove('is-result');
-                    el.classList.add('bg-gray-50', 'hover:bg-gray-100', 'border-transparent');
-                }
-                const input = el.querySelector('input');
-                if (input) {
-                    input.readOnly = isResult;
-                    if (isResult) input.classList.add('is-result-text');
-                    else input.classList.remove('is-result-text');
-                }
-                const label = el.querySelector('.label-text');
-                if (label) {
-                    if (isResult) {
-                        label.classList.add('text-orange-600');
-                        label.classList.remove('text-gray-500');
-                        if (!label.querySelector('.badge')) {
-                            label.innerHTML += ' <span class="badge ml-1 text-[10px] bg-orange-500 text-white px-1 rounded shadow-sm animate-pulse-fast">自動計算中</span>';
-                        }
-                    } else {
-                        label.classList.remove('text-orange-600');
-                        label.classList.add('text-gray-500');
-                        const badge = label.querySelector('.badge');
-                        if (badge) badge.remove();
+                // 執行對應計算並回填
+                if (calcTarget === 'pace') {
+                    if (d > 0 && t > 0) {
+                        calcPace = t / d;
+                        const parts = formatPaceParts(calcPace);
+                        setPaceMin(parts.m.toString());
+                        setPaceSec(parts.s.toString());
+                    }
+                } else if (calcTarget === 'time') {
+                    if (d > 0 && p > 0) {
+                        calcTime = d * p;
+                        const parts = formatSecondsToTime(calcTime, tableType);
+                        setHours(parts.h > 0 ? parts.h.toString() : '');
+                        setMinutes(parts.m.toString());
+                        setSeconds(parts.s.toString());
+                    }
+                } else if (calcTarget === 'distance') {
+                    if (t > 0 && p > 0) {
+                        calcDist = t / p;
+                        setDistance(tableType === 'track' ? calcDist.toFixed(3) : calcDist.toFixed(2));
                     }
                 }
-            });
-        }
 
-        function renderPresets() {
-            const presets = state.tableType === 'road' 
-                ? [ {l: '1k', v: 1}, {l: '5k', v: 5}, {l: '10k', v: 10}, {l: '半馬', v: 21.0975}, {l: '全馬', v: 42.195} ]
-                : [ {l: '200m', v: 0.2}, {l: '400m', v: 0.4}, {l: '800m', v: 0.8}, {l: '1600m', v: 1.6} ];
-            
-            els.presetsContainer.innerHTML = presets.map(p => `
-                <button onclick="setPreset(${p.v})" class="px-3 py-1 text-[10px] bg-gray-100 hover:bg-orange-500 hover:text-white rounded-lg transition-all border border-transparent font-bold">
-                    ${p.l}
-                </button>
-            `).join('');
-        }
+                const milestones = tableType === 'road' ? ROAD_MILESTONES : TRACK_MILESTONES;
+                const splitData = milestones.map(m => {
+                    const timeAtM = m * calcPace;
+                    const f = formatSecondsToTime(timeAtM, tableType);
+                    let label = `${m}k`;
+                    if (tableType === 'road') {
+                        if (m === 21.0975) label = "半馬 (21.0975k)";
+                        if (m === 42.195) label = "全馬 (42.195k)";
+                    } else {
+                        label = `${Math.round(m * 1000)}m`;
+                    }
+                    return { label, clock: f.clock, km: m };
+                });
 
-        window.setPreset = (val) => {
-            state.distance = val;
-            const displayD = state.tableType === 'track' ? Math.round(val * 1000) : val;
-            els.inputDistance.value = displayD;
-            handleActivate('distance');
+                setDisplayResults({
+                    pace: formatPaceParts(calcPace).str,
+                    time: formatSecondsToTime(calcTime, tableType).clock,
+                    dist: tableType === 'track' ? Math.round(calcDist * 1000) : calcDist.toFixed(2),
+                    kmh: calcPace > 0 ? (3600 / calcPace).toFixed(1) : "0",
+                    splits: splitData,
+                    mode: calcTarget,
+                    currentKm: calcDist,
+                    unit: tableType === 'road' ? 'km' : 'm',
+                    timeLabel: tableType === 'road' ? '總計時間' : '單組時間'
+                });
+            };
+
+            const reset = () => {
+                setDistance(''); setHours(''); setMinutes(''); setSeconds(''); setPaceMin(''); setPaceSec('');
+                setDisplayResults(null);
+            };
+
+            return (
+                <div className="min-h-screen p-4 md:p-8">
+                    <div className="max-w-6xl mx-auto space-y-8">
+                        
+                        {/* Header */}
+                        <header className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+                            <div>
+                                <div className="flex items-center gap-3 mb-2">
+                                    <div className="bg-orange-500 p-2 rounded-xl shadow-lg shadow-orange-200">
+                                        <Icon name="activity" size={32} className="text-white" />
+                                    </div>
+                                    <h1 className="text-3xl font-black tracking-tight uppercase">Pacer <span className="text-orange-500">Pro</span></h1>
+                                </div>
+                                <p className="text-slate-500 font-medium">專業跑步配速計算工具</p>
+                            </div>
+
+                            <div className="bg-white p-1 rounded-xl shadow-sm border border-slate-200 flex">
+                                <button 
+                                    onClick={() => {setTableType('road'); reset();}}
+                                    className={`px-6 py-2 rounded-lg text-sm font-bold transition-all ${tableType === 'road' ? 'bg-slate-900 text-white shadow-md' : 'text-slate-500 hover:bg-slate-50'}`}
+                                >
+                                    路跑模式 (km)
+                                </button>
+                                <button 
+                                    onClick={() => {setTableType('track'); reset();}}
+                                    className={`px-6 py-2 rounded-lg text-sm font-bold transition-all ${tableType === 'track' ? 'bg-slate-900 text-white shadow-md' : 'text-slate-500 hover:bg-slate-50'}`}
+                                >
+                                    田徑場模式 (m)
+                                </button>
+                            </div>
+                        </header>
+
+                        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                            
+                            {/* Left Column: Inputs */}
+                            <div className="lg:col-span-4 space-y-6">
+                                <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-200 space-y-8">
+                                    <div className="flex items-center justify-between border-b pb-4">
+                                        <h2 className="font-bold flex items-center gap-2"><Icon name="sliders" size={20} className="text-orange-500" /> 參數輸入</h2>
+                                        <button 
+                                            onClick={reset} 
+                                            className="text-base font-black text-red-600 border-2 border-red-500 hover:bg-red-50 px-5 py-2 rounded-xl transition-all flex items-center gap-1 shadow-sm active:scale-95"
+                                        >
+                                            <Icon name="trash-2" size={16} /> 重置數據
+                                        </button>
+                                    </div>
+
+                                    {/* Distance Input */}
+                                    <div className="space-y-3">
+                                        <div className="flex justify-between items-center">
+                                            <div className="flex items-center gap-2">
+                                                <button 
+                                                    onClick={() => setCalcTarget('distance')}
+                                                    className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black uppercase transition-all ${calcTarget === 'distance' ? 'bg-orange-500 text-white' : 'bg-slate-100 text-slate-400'}`}
+                                                >
+                                                    <Icon name="target" size={12} className={calcTarget === 'distance' ? 'text-white' : 'text-slate-400'} /> 計算
+                                                </button>
+                                                <label className={`text-xs font-black uppercase tracking-widest ${calcTarget === 'distance' ? 'text-orange-500' : 'text-slate-400'}`}>目標距離</label>
+                                            </div>
+                                            <div className="flex flex-wrap gap-1 justify-end">
+                                                {(tableType === 'road' ? [1, 5, 10, 21.0975, 42.195] : [200, 400, 800, 1600]).map(btn => (
+                                                    <button 
+                                                        key={btn}
+                                                        disabled={calcTarget === 'distance'}
+                                                        onClick={() => setDistance(tableType === 'track' ? (btn/1000).toString() : btn.toString())}
+                                                        className={`text-[10px] px-2 py-1 rounded font-bold transition-colors ${calcTarget === 'distance' ? 'bg-slate-50 text-slate-300' : 'bg-slate-100 hover:bg-orange-100 text-slate-600'}`}
+                                                    >
+                                                        {btn === 21.0975 ? '半馬' : btn === 42.195 ? '全馬' : btn}{tableType === 'road' && btn !== 21.0975 && btn !== 42.195 ? 'k' : (tableType === 'track' ? 'm' : '')}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+                                        <div className={`flex items-center bg-slate-50 border-2 rounded-2xl p-4 transition-all ${calcTarget === 'distance' ? 'border-orange-500 bg-orange-50 shadow-[0_0_10px_rgba(249,115,22,0.1)]' : 'border-transparent focus-within:border-slate-300'}`}>
+                                            <input 
+                                                type="number" 
+                                                readOnly={calcTarget === 'distance'}
+                                                value={tableType === 'track' ? (distance ? parseFloat(distance)*1000 : '') : distance}
+                                                onChange={(e) => {
+                                                    const val = e.target.value;
+                                                    setDistance(tableType === 'track' ? (val ? parseFloat(val)/1000 : '') : val);
+                                                }}
+                                                placeholder={calcTarget === 'distance' ? '計算結果將填入' : '請輸入'}
+                                                className={`bg-transparent w-full text-2xl font-black outline-none ${calcTarget === 'distance' ? 'text-orange-600' : 'text-slate-800 placeholder:text-slate-200'}`}
+                                            />
+                                            <span className={`font-bold ${calcTarget === 'distance' ? 'text-orange-400' : 'text-slate-400'}`}>{tableType === 'road' ? 'km' : 'm'}</span>
+                                        </div>
+                                    </div>
+
+                                    {/* Time Input */}
+                                    <div className="space-y-3">
+                                        <div className="flex items-center gap-2">
+                                            <button 
+                                                onClick={() => setCalcTarget('time')}
+                                                className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black uppercase transition-all ${calcTarget === 'time' ? 'bg-orange-500 text-white' : 'bg-slate-100 text-slate-400'}`}
+                                            >
+                                                <Icon name="target" size={12} className={calcTarget === 'time' ? 'text-white' : 'text-slate-400'} /> 計算
+                                            </button>
+                                            <label className={`text-xs font-black uppercase tracking-widest ${calcTarget === 'time' ? 'text-orange-500' : 'text-slate-400'}`}>
+                                                {tableType === 'road' ? '總時間' : '單組時間'}
+                                            </label>
+                                        </div>
+                                        <div className={`flex items-center justify-between p-3 rounded-2xl border-2 transition-all ${calcTarget === 'time' ? 'border-orange-500 bg-orange-50 shadow-[0_0_10px_rgba(249,115,22,0.1)]' : 'border-slate-50 bg-slate-50'}`}>
+                                            {tableType === 'road' && (
+                                                <>
+                                                    <div className="flex-1 relative h-10 flex items-center">
+                                                        <input type="number" readOnly={calcTarget === 'time'} value={hours} onChange={e => setHours(e.target.value)} className={`w-full bg-transparent text-xl font-black text-center outline-none ${calcTarget === 'time' ? 'text-orange-600' : 'text-slate-800'}`} placeholder="0" />
+                                                        <span className={`absolute bottom-0 right-1 text-[9px] font-bold leading-none pointer-events-none ${calcTarget === 'time' ? 'text-orange-400' : 'text-slate-400'}`}>時</span>
+                                                    </div>
+                                                    <div className="flex items-center px-1"><span className="text-xl font-black text-slate-300">:</span></div>
+                                                </>
+                                            )}
+                                            <div className="flex-1 relative h-10 flex items-center">
+                                                <input type="number" readOnly={calcTarget === 'time'} value={minutes} onChange={e => setMinutes(e.target.value)} className={`w-full bg-transparent text-xl font-black text-center outline-none ${calcTarget === 'time' ? 'text-orange-600' : 'text-slate-800'}`} placeholder="0" />
+                                                <span className={`absolute bottom-0 right-1 text-[9px] font-bold leading-none pointer-events-none ${calcTarget === 'time' ? 'text-orange-400' : 'text-slate-400'}`}>分</span>
+                                            </div>
+                                            <div className="flex items-center px-1"><span className="text-xl font-black text-slate-300">:</span></div>
+                                            <div className="flex-1 relative h-10 flex items-center">
+                                                <input type="number" readOnly={calcTarget === 'time'} value={seconds} onChange={e => setSeconds(e.target.value)} className={`w-full bg-transparent text-xl font-black text-center outline-none ${calcTarget === 'time' ? 'text-orange-600' : 'text-slate-800'}`} placeholder="0" />
+                                                <span className={`absolute bottom-0 right-1 text-[9px] font-bold leading-none pointer-events-none ${calcTarget === 'time' ? 'text-orange-400' : 'text-slate-400'}`}>秒</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Pace Input */}
+                                    <div className="space-y-3">
+                                        <div className="flex items-center gap-2">
+                                            <button 
+                                                onClick={() => setCalcTarget('pace')}
+                                                className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black uppercase transition-all ${calcTarget === 'pace' ? 'bg-orange-500 text-white' : 'bg-slate-100 text-slate-400'}`}
+                                            >
+                                                <Icon name="target" size={12} className={calcTarget === 'pace' ? 'text-white' : 'text-slate-400'} /> 計算
+                                            </button>
+                                            <label className={`text-xs font-black uppercase tracking-widest ${calcTarget === 'pace' ? 'text-orange-500' : 'text-slate-400'}`}>平均配速</label>
+                                        </div>
+                                        <div className={`flex items-center justify-between p-3 rounded-2xl border-2 transition-all ${calcTarget === 'pace' ? 'border-orange-500 bg-orange-50 shadow-[0_0_10px_rgba(249,115,22,0.1)]' : 'border-slate-50 bg-slate-50'}`}>
+                                            <div className="flex-1 relative h-10 flex items-center">
+                                                <input type="number" readOnly={calcTarget === 'pace'} value={paceMin} onChange={e => setPaceMin(e.target.value)} className={`w-full bg-transparent text-xl font-black text-center outline-none ${calcTarget === 'pace' ? 'text-orange-600' : 'text-slate-800'}`} placeholder="0" />
+                                                <span className={`absolute bottom-0 right-1 text-[9px] font-bold leading-none pointer-events-none ${calcTarget === 'pace' ? 'text-orange-400' : 'text-slate-400'}`}>分</span>
+                                            </div>
+                                            <div className="flex items-center px-1"><span className="text-xl font-black text-slate-300">:</span></div>
+                                            <div className="flex-1 relative h-10 flex items-center">
+                                                <input type="number" readOnly={calcTarget === 'pace'} value={paceSec} onChange={e => setPaceSec(e.target.value)} className={`w-full bg-transparent text-xl font-black text-center outline-none ${calcTarget === 'pace' ? 'text-orange-600' : 'text-slate-800'}`} placeholder="0" />
+                                                <span className={`absolute bottom-0 right-1 text-[9px] font-bold leading-none pointer-events-none ${calcTarget === 'pace' ? 'text-orange-400' : 'text-slate-400'}`}>秒</span>
+                                            </div>
+                                            <div className={`flex items-center px-2 font-bold pt-3 ${calcTarget === 'pace' ? 'text-orange-400' : 'text-slate-400'}`}>/ km</div>
+                                        </div>
+                                    </div>
+
+                                    {/* Action Button */}
+                                    <button 
+                                        onClick={handleStartCalc}
+                                        className="w-full bg-orange-500 hover:bg-orange-600 text-white font-black py-5 rounded-2xl shadow-xl shadow-orange-200 transition-all active:scale-[0.98] flex items-center justify-center gap-3 text-xl ring-4 ring-orange-500/10"
+                                    >
+                                        <Icon name="play" size={24} className="fill-current" /> 開始計算結果
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* Right Column: Display Results */}
+                            <div className="lg:col-span-8 flex flex-col gap-6">
+                                
+                                {/* Result Display Cards */}
+                                {displayResults ? (
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                        <div className={`p-6 rounded-3xl border-2 transition-all shadow-xl relative overflow-hidden group ${displayResults.mode === 'distance' ? 'bg-gradient-to-br from-orange-500 to-orange-600 border-orange-400 text-white' : 'bg-white border-slate-200 text-slate-900 shadow-sm'}`}>
+                                            <div className={`text-[10px] font-black uppercase mb-1 tracking-tighter ${displayResults.mode === 'distance' ? 'text-orange-100' : 'text-slate-400'}`}>目標距離</div>
+                                            <div className="text-4xl font-black tracking-tight">{displayResults.dist} <span className={`text-sm font-bold ${displayResults.mode === 'distance' ? 'text-orange-200' : 'text-slate-400'}`}>{displayResults.unit}</span></div>
+                                            {displayResults.mode === 'distance' && <div className="absolute top-0 right-0 px-3 py-1 bg-white text-orange-600 text-[8px] font-black rounded-bl-xl shadow-sm">推算結果</div>}
+                                        </div>
+                                        
+                                        <div className={`p-6 rounded-3xl border-2 transition-all shadow-xl relative overflow-hidden group ${displayResults.mode === 'time' ? 'bg-gradient-to-br from-orange-500 to-orange-600 border-orange-400 text-white' : 'bg-white border-slate-200 text-slate-900 shadow-sm'}`}>
+                                            <div className={`text-[10px] font-black uppercase mb-1 tracking-tighter ${displayResults.mode === 'time' ? 'text-orange-100' : 'text-slate-400'}`}>{displayResults.timeLabel}</div>
+                                            <div className="text-4xl font-black tracking-tight">{displayResults.time}</div>
+                                            {displayResults.mode === 'time' && <div className="absolute top-0 right-0 px-3 py-1 bg-white text-orange-600 text-[8px] font-black rounded-bl-xl shadow-sm">推算結果</div>}
+                                        </div>
+
+                                        <div className={`p-6 rounded-3xl border-2 transition-all shadow-xl relative overflow-hidden group ${displayResults.mode === 'pace' ? 'bg-gradient-to-br from-orange-500 to-orange-600 border-orange-400 text-white' : 'bg-white border-slate-200 text-slate-900 shadow-sm'}`}>
+                                            <div className="flex justify-between items-start">
+                                                <div className={`text-[10px] font-black uppercase mb-1 tracking-tighter ${displayResults.mode === 'pace' ? 'text-orange-100' : 'text-slate-400'}`}>平均配速</div>
+                                                <div className={`${displayResults.mode === 'pace' ? 'bg-white/20' : 'bg-orange-500'} backdrop-blur-md text-white text-[9px] px-2 py-0.5 rounded-full font-black border border-white/20`}>{displayResults.kmh} km/h</div>
+                                            </div>
+                                            <div className="text-4xl font-black tracking-tight">{displayResults.pace} <span className={`text-sm font-bold ${displayResults.mode === 'pace' ? 'text-orange-200' : 'text-slate-400'}`}>/km</span></div>
+                                            {displayResults.mode === 'pace' && <div className="absolute top-0 right-0 px-3 py-1 bg-white text-orange-600 text-[8px] font-black rounded-bl-xl shadow-sm">推算結果</div>}
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="bg-white p-12 rounded-3xl border-2 border-dashed border-slate-200 flex flex-col items-center justify-center text-slate-400 shadow-inner">
+                                        <Icon name="play" size={48} className="mb-4 opacity-20" />
+                                        <p className="font-bold uppercase tracking-widest text-xs">請輸入數值後點擊「開始計算」</p>
+                                    </div>
+                                )}
+
+                                {/* Split Table */}
+                                <div className="flex-grow bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden flex flex-col">
+                                    <div className="flex items-center gap-2 px-6 py-5 border-b bg-slate-50/50">
+                                        <Icon name="list-ordered" size={20} className="text-orange-500" />
+                                        <h4 className="font-bold text-slate-700 text-lg">里程分段對照表</h4>
+                                    </div>
+
+                                    <div className="p-8">
+                                        {displayResults ? (
+                                            <div className={`grid grid-flow-col grid-cols-2 ${tableType === 'road' ? 'grid-rows-road' : 'grid-rows-track'} gap-x-12 gap-y-4`}>
+                                                {displayResults.splits.map((split, i) => {
+                                                    const isMatch = Math.abs(split.km - displayResults.currentKm) < 0.0001;
+                                                    return (
+                                                        <div 
+                                                            key={i} 
+                                                            className={`flex items-center justify-between p-4 rounded-2xl border transition-all group ${isMatch ? 'bg-orange-500 border-orange-400 text-white shadow-lg shadow-orange-100' : 'border-slate-100 bg-slate-50/50 hover:bg-orange-50 hover:border-orange-100'}`}
+                                                        >
+                                                            <span className={`text-[11px] font-black uppercase truncate mr-2 ${isMatch ? 'text-orange-100' : 'text-slate-400 group-hover:text-orange-500'}`}>{split.label}</span>
+                                                            <span className={`text-xl font-mono-run font-bold ${isMatch ? 'text-white' : 'text-slate-800 group-hover:text-orange-600'}`}>{split.clock}</span>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        ) : (
+                                            <div className="py-20 text-center text-slate-300 italic font-medium">按下計算後將產生詳細分段對照表</div>
+                                        )}
+                                    </div>
+
+                                    <div className="p-4 bg-slate-50 border-t mt-auto flex items-center justify-end">
+                                        <div className="text-[10px] text-slate-300 font-black tracking-widest uppercase tracking-widest">Pacer Pro Engine</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
         };
 
-        // 事件監聽
-        els.btnRoad.addEventListener('click', () => {
-            state.tableType = 'road';
-            els.btnRoad.className = 'flex-1 flex items-center justify-center gap-2 py-3 text-sm font-bold rounded-xl transition-all bg-orange-500 text-white shadow-md';
-            els.btnTrack.className = 'flex-1 flex items-center justify-center gap-2 py-3 text-sm font-bold rounded-xl transition-all text-gray-500 hover:bg-gray-50';
-            update();
-        });
-
-        els.btnTrack.addEventListener('click', () => {
-            state.tableType = 'track';
-            els.btnTrack.className = 'flex-1 flex items-center justify-center gap-2 py-3 text-sm font-bold rounded-xl transition-all bg-orange-500 text-white shadow-md';
-            els.btnRoad.className = 'flex-1 flex items-center justify-center gap-2 py-3 text-sm font-bold rounded-xl transition-all text-gray-500 hover:bg-gray-50';
-            update();
-        });
-
-        els.btnReset.addEventListener('click', () => {
-            state = { ...state, distance: 0, hours: 0, minutes: 0, seconds: 0, paceMin: 0, paceSec: 0 };
-            els.inputDistance.value = "";
-            els.inputH.value = ""; els.inputM.value = ""; els.inputS.value = "";
-            els.inputPm.value = ""; els.inputPs.value = "";
-            update();
-        });
-
-        // 輸入監聽
-        const bindInput = (el, key, type) => {
-            el.addEventListener('input', (e) => {
-                let val = parseFloat(e.target.value) || 0;
-                if (key === 'distance' && state.tableType === 'track') val = val / 1000;
-                state[key] = val;
-                handleActivate(type);
-            });
-            el.addEventListener('focus', () => {
-                el.select();
-                handleActivate(type);
-            });
-        };
-
-        bindInput(els.inputDistance, 'distance', 'distance');
-        bindInput(els.inputH, 'hours', 'time');
-        bindInput(els.inputM, 'minutes', 'time');
-        bindInput(els.inputS, 'seconds', 'time');
-        bindInput(els.inputPm, 'paceMin', 'pace');
-        bindInput(els.inputPs, 'paceSec', 'pace');
-
-        // 初始化
-        update();
-        // 手動觸發一次初始值填充
-        els.inputDistance.value = state.distance;
-        els.inputH.value = state.hours;
-        els.inputM.value = state.minutes;
-        els.inputS.value = state.seconds;
-        els.inputPm.value = state.paceMin;
-        els.inputPs.value = state.paceSec;
-
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
     </script>
 </body>
 </html>
