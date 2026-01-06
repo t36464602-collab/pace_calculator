@@ -2,14 +2,17 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Pacer Pro - 專業跑步配速計算器</title>
-    <!-- Web App Meta Tags -->
+    
+    <!-- iOS PWA Meta Tags -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Pacer Pro">
-    <link rel="apple-touch-icon" href="logo_refined.png">
-    <link rel="icon" type="image/png" href="logo_refined.png">
+    
+    <!-- 內嵌 Logo Data URL (由原 SVG 轉換，確保加入主畫面時顯示圖標) -->
+    <link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTgwIiBoZWlnaHQ9IjE4MCIgdmlld0JveD0iMCAwIDE4MCAxODAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CiAgPHJlY3Qgd2lkdGg9IjE4MCIgaGVpZ2h0PSIxODAiIHJ4PSIzNiIgZmlsbD0idXJsKCNncmFkKSIvPgogIDxkZWZzPgogICAgPGxpbmVhckdyYWRpZW50IGlkPSJncmFkIiB4MT0iMCIgeTE9IjAiIHgyPSIxODAiIHkyPSIxODAiIGdyYWRpZW50VW5pdHM9InVzZXJTcGFjZU9uVXNlIj4KICAgICAgPHN0b3Agc3RvcC1jb2xvcj0iI0ZCOTk0NCIvPgogICAgICA8c3RvcCBvZmZzZXQ9IjEiIHN0b3AtY29sb3I9IiNFQTU4MEMiLz4KICAgIDwvbGluZWFyR3JhZGllbnQ+CiAgPC9kZWZzPgogIDxnIHRyYW5zZm9ybT0idHJhbnNsYXRlKDI0LCAyNCkgc2NhbGUoNS41KSI+CiAgICA8Y2lyY2xlIGN4PSIxMiIgY3k9IjEyIiByPSIxMCIgc3Ryb2tlPSJ3aGl0ZSIgc3Ryb2tlLXdpZHRoPSIxIiBzdHJva2UtZGFzaGFycmF5PSIyIDIiIG9wYWNpdHk9IjAuMyIvPgogICAgPHBhdGggZD0iTTEyIDJDMTcuNTIyOCAyIDIyIDYuNDc3MTUgMjIgMTIiIHN0cm9rZT0id2hpdGUiIHN0cm9rZS13aWR0aD0iMi41IiBzdHJva2UtbGluZWNhcD0icm91bmQiLz4KICAgIDxwYXRoIGQ9Ik0xNCA0LjVMNyAxMi41SDEyTDEwIDE5LjVMMTcgMTEuNUgxMkwxNCA0LjVaIiBmaWxsPSJ3aGl0ZSIvPgogIDwvZz4KPC9zdmc+">
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTgwIiBoZWlnaHQ9IjE4MCIgdmlld0JveD0iMCAwIDE4MCAxODAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CiAgPHJlY3Qgd2lkdGg9IjE4MCIgaGVpZ2h0PSIxODAiIHJ4PSIzNiIgZmlsbD0idXJsKCNncmFkKSIvPgogIDxkZWZzPgogICAgPGxpbmVhckdyYWRpZW50IGlkPSJncmFkIiB4MT0iMCIgeTE9IjAiIHgyPSIxODAiIHkyPSIxODAiIGdyYWRpZW50VW5pdHM9InVzZXJTcGFjZU9uVXNlIj4KICAgICAgPHN0b3Agc3RvcC1jb2xvcj0iI0ZCOTk0NCIvPgogICAgICA8c3RvcCBvZmZzZXQ9IjEiIHN0b3AtY29sb3I9IiNFQTU4MEMiLz4KICAgIDwvbGluZWFyR3JhZGllbnQ+CiAgPC9kZWZzPgogIDxnIHRyYW5zZm9ybT0idHJhbnNsYXRlKDI0LCAyNCkgc2NhbGUoNS41KSI+CiAgICA8Y2lyY2xlIGN4PSIxMiIgY3k9IjEyIiByPSIxMCIgc3Ryb2tlPSJ3aGl0ZSIgc3Ryb2tlLXdpZHRoPSIxIiBzdHJva2UtZGFzaGFycmF5PSIyIDIiIG9wYWNpdHk9IjAuMyIvPgogICAgPHBhdGggZD0iTTEyIDJDMTcuNTIyOCAyIDIyIDYuNDc3MTUgMjIgMTIiIHN0cm9rZT0id2hpdGUiIHN0cm9rZS13aWR0aD0iMi41IiBzdHJva2UtbGluZWNhcD0icm91bmQiLz4KICAgIDxwYXRoIGQ9Ik0xNCA0LjVMNyAxMi41SDEyTDEwIDE5LjVMMTcgMTEuNUgxMkwxNCA0LjVaIiBmaWxsPSJ3aGl0ZSIvPgogIDwvZz4KPC9zdmc+">
 
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -24,6 +27,7 @@
         
         body {
             font-family: 'Inter', 'Noto Sans TC', sans-serif;
+            -webkit-tap-highlight-color: transparent;
         }
 
         .font-mono-run {
@@ -57,6 +61,12 @@
         .logo-premium {
             animation: premium-pulse 4s ease-in-out infinite;
         }
+
+        /* 解決 iOS 彈性滾動溢出問題 */
+        html, body {
+            overflow-x: hidden;
+            height: 100%;
+        }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-900">
@@ -65,7 +75,6 @@
     <script type="text/babel">
         const { useState, useEffect, useCallback, useRef } = React;
 
-        // 更新後的極簡 Logo：圓圈 + 閃電 (無圓點)
         const PacerLogo = ({ size = 32 }) => (
             <div className="bg-gradient-to-br from-orange-400 to-orange-600 p-2 rounded-xl shadow-lg shadow-orange-200 flex items-center justify-center logo-premium shrink-0">
                 <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -79,7 +88,6 @@
             </div>
         );
 
-        // 圖標組件
         const Icon = ({ name, size = 20, className = "" }) => {
             const containerRef = useRef(null);
             useEffect(() => {
@@ -93,7 +101,6 @@
 
         const App = () => {
             const [tableType, setTableType] = useState('road');
-            // 使用 String 儲存輸入數值以避免精度跳動
             const [distanceInput, setDistanceInput] = useState(''); 
             const [hours, setHours] = useState('');
             const [minutes, setMinutes] = useState('');
@@ -107,7 +114,6 @@
             const ROAD_MILESTONES = [1, 5, 10, 15, 20, 21.0975, 25, 30, 35, 40, 42.195];
             const TRACK_MILESTONES = [0.1, 0.2, 0.3, 0.4, 0.8, 1.0, 1.6, 2.0];
 
-            // 格式化時間邏輯
             const formatSecondsToTime = (totalSec, type) => {
                 if (!isFinite(totalSec) || totalSec < 0) return { h: 0, m: 0, s: 0, clock: "0:00" };
                 const roundedTotalSec = Math.round(totalSec);
@@ -132,9 +138,7 @@
                 return { m, s, str: `${m}'${s.toString().padStart(2, '0')}"` };
             };
 
-            // 開始計算
             const handleStartCalc = useCallback(() => {
-                // 獲取目前數值，確保不為負
                 let d = Math.max(0, tableType === 'track' ? (parseFloat(distanceInput) / 1000 || 0) : (parseFloat(distanceInput) || 0));
                 let t = Math.max(0, (parseInt(hours) || 0) * 3600 + (parseInt(minutes) || 0) * 60 + (parseInt(seconds) || 0));
                 let p = Math.max(0, (parseInt(paceMin) || 0) * 60 + (parseInt(paceSec) || 0));
@@ -196,11 +200,10 @@
             };
 
             return (
-                <div className="min-h-screen p-3 md:p-8 bg-slate-50 text-slate-900">
+                <div className="min-h-screen p-3 md:p-8 bg-slate-50 text-slate-900 overflow-y-auto">
                     <div className="max-w-6xl mx-auto space-y-6 md:space-y-8">
                         
-                        {/* Header */}
-                        <header className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+                        <header className="flex flex-col md:flex-row md:items-end justify-between gap-4 mt-4">
                             <div className="text-center md:text-left">
                                 <div className="flex items-center justify-center md:justify-start gap-4 mb-2">
                                     <PacerLogo size={28} />
@@ -225,7 +228,7 @@
                                             <Icon name="sliders" size={18} className="text-orange-500" /> 參數輸入
                                         </h2>
                                         <button onClick={reset} className="text-sm font-black text-red-600 border-2 border-red-500/30 hover:border-red-500 hover:bg-red-50 px-4 py-1.5 rounded-xl transition-all flex items-center gap-1 active:scale-95">
-                                            <Icon name="trash-2" size={14} /> 重置數據
+                                            <Icon name="trash-2" size={14} /> 重置
                                         </button>
                                     </div>
 
@@ -312,14 +315,14 @@
                                 {displayResults ? (
                                     <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
                                         <div className={`p-5 md:p-6 rounded-3xl border-2 shadow-xl relative overflow-hidden ${displayResults.mode === 'distance' ? 'bg-gradient-to-br from-orange-500 to-orange-600 border-orange-400 text-white' : 'bg-white border-slate-200 text-slate-900'}`}>
-                                            <div className={`text-[10px] font-black uppercase mb-1 ${displayResults.mode === 'distance' ? 'text-orange-100' : 'text-slate-400'}`}>目標距離</div>
+                                            <div className={`text-[10px] font-black uppercase mb-1 ${displayResults.mode === 'distance' ? 'text-orange-100' : 'text-slate-400'}`}>推算距離</div>
                                             <div className="text-3xl md:text-4xl font-black">{displayResults.dist} <span className="text-sm font-bold opacity-60">{displayResults.unit}</span></div>
-                                            {displayResults.mode === 'distance' && <div className="absolute top-0 right-0 px-2 py-0.5 bg-white text-orange-600 text-[8px] font-black rounded-bl-xl shadow-sm">推算結果</div>}
+                                            {displayResults.mode === 'distance' && <div className="absolute top-0 right-0 px-2 py-0.5 bg-white text-orange-600 text-[8px] font-black rounded-bl-xl shadow-sm">Result</div>}
                                         </div>
                                         <div className={`p-5 md:p-6 rounded-3xl border-2 shadow-xl relative overflow-hidden ${displayResults.mode === 'time' ? 'bg-gradient-to-br from-orange-500 to-orange-600 border-orange-400 text-white' : 'bg-white border-slate-200 text-slate-900'}`}>
                                             <div className={`text-[10px] font-black uppercase mb-1 ${displayResults.mode === 'time' ? 'text-orange-100' : 'text-slate-400'}`}>{displayResults.timeLabel}</div>
                                             <div className="text-3xl md:text-4xl font-black">{displayResults.time}</div>
-                                            {displayResults.mode === 'time' && <div className="absolute top-0 right-0 px-2 py-0.5 bg-white text-orange-600 text-[8px] font-black rounded-bl-xl shadow-sm">推算結果</div>}
+                                            {displayResults.mode === 'time' && <div className="absolute top-0 right-0 px-2 py-0.5 bg-white text-orange-600 text-[8px] font-black rounded-bl-xl shadow-sm">Result</div>}
                                         </div>
                                         <div className={`p-5 md:p-6 rounded-3xl border-2 shadow-xl relative overflow-hidden ${displayResults.mode === 'pace' ? 'bg-gradient-to-br from-orange-500 to-orange-600 border-orange-400 text-white' : 'bg-white border-slate-200 text-slate-900'}`}>
                                             <div className="flex justify-between items-start">
@@ -327,7 +330,7 @@
                                                 <div className={`${displayResults.mode === 'pace' ? 'bg-white/20' : 'bg-orange-500'} backdrop-blur-md text-white text-[9px] px-1.5 py-0.5 rounded-full font-black border border-white/20`}>{displayResults.kmh} km/h</div>
                                             </div>
                                             <div className="text-3xl md:text-4xl font-black">{displayResults.pace} <span className="text-sm font-bold opacity-60">/km</span></div>
-                                            {displayResults.mode === 'pace' && <div className="absolute top-0 right-0 px-2 py-0.5 bg-white text-orange-600 text-[8px] font-black rounded-bl-xl shadow-sm">推算結果</div>}
+                                            {displayResults.mode === 'pace' && <div className="absolute top-0 right-0 px-2 py-0.5 bg-white text-orange-600 text-[8px] font-black rounded-bl-xl shadow-sm">Result</div>}
                                         </div>
                                     </div>
                                 ) : (
@@ -337,7 +340,7 @@
                                     </div>
                                 )}
 
-                                <div className="flex-grow bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden flex flex-col">
+                                <div className="flex-grow bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden flex flex-col mb-10">
                                     <div className="flex items-center gap-2 px-6 py-4 border-b bg-slate-50/50">
                                         <Icon name="list-ordered" size={18} className="text-orange-500" />
                                         <h4 className="font-bold text-slate-700">里程分段對照表</h4>
