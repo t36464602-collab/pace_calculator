@@ -46,16 +46,19 @@
     <div id="root"></div>
 
     <script type="text/babel">
-        const { useState, useEffect, useMemo } = React;
+        const { useState, useEffect, useMemo, useCallback } = React;
 
         // 簡易 Lucide 圖標組件
         const Icon = ({ name, size = 20, className = "" }) => {
             useEffect(() => {
-                if (window.lucide) {
+                if (window.lucide && typeof window.lucide.createIcons === 'function') {
                     window.lucide.createIcons();
                 }
             }, [name, className]);
-            return <i data-lucide={name} className={`inline-block w-${size/4} h-${size/4} ${className}`}></i>;
+            
+            // Tailwind 寬高轉換
+            const sizeClass = `w-${Math.ceil(size/4)} h-${Math.ceil(size/4)}`;
+            return <i data-lucide={name} className={`${sizeClass} ${className} inline-block`}></i>;
         };
 
         const App = () => {
@@ -80,6 +83,7 @@
 
             // 輔助函式：時間格式化
             const formatSecondsToTime = (totalSec, type) => {
+                if (!isFinite(totalSec) || totalSec < 0) return { h: 0, m: 0, s: 0, clock: "0:00" };
                 const h = Math.floor(totalSec / 3600);
                 const m = Math.floor((totalSec % 3600) / 60);
                 const s = Math.round(totalSec % 60);
@@ -95,13 +99,14 @@
             };
 
             const formatPaceParts = (totalSec) => {
+                if (!isFinite(totalSec) || totalSec <= 0) return { m: 0, s: 0, str: "0'00\"" };
                 const m = Math.floor(totalSec / 60);
                 const s = Math.round(totalSec % 60);
                 return { m, s, str: `${m}'${s.toString().padStart(2, '0')}"` };
             };
 
             // 手動執行計算
-            const handleStartCalc = () => {
+            const handleStartCalc = useCallback(() => {
                 let d = parseFloat(distance) || 0;
                 let t = (parseInt(hours) || 0) * 3600 + (parseInt(minutes) || 0) * 60 + (parseInt(seconds) || 0);
                 let p = (parseInt(paceMin) || 0) * 60 + (parseInt(paceSec) || 0);
@@ -151,14 +156,14 @@
                     pace: formatPaceParts(calcPace).str,
                     time: formatSecondsToTime(calcTime, tableType).clock,
                     dist: tableType === 'track' ? Math.round(calcDist * 1000) : calcDist.toFixed(2),
-                    kmh: calcPace > 0 ? (3600 / calcPace).toFixed(1) : "0",
+                    kmh: calcPace > 0 ? (3600 / calcPace).toFixed(1) : "0.0",
                     splits: splitData,
                     mode: calcTarget,
                     currentKm: calcDist,
                     unit: tableType === 'road' ? 'km' : 'm',
                     timeLabel: tableType === 'road' ? '總計時間' : '單組時間'
                 });
-            };
+            }, [distance, hours, minutes, seconds, paceMin, paceSec, calcTarget, tableType]);
 
             const reset = () => {
                 setDistance(''); setHours(''); setMinutes(''); setSeconds(''); setPaceMin(''); setPaceSec('');
@@ -203,12 +208,14 @@
                             <div className="lg:col-span-4 space-y-6">
                                 <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-200 space-y-8">
                                     <div className="flex items-center justify-between border-b pb-4">
-                                        <h2 className="font-bold flex items-center gap-2"><Icon name="sliders" size={20} className="text-orange-500" /> 參數輸入</h2>
+                                        <h2 className="font-bold flex items-center gap-2">
+                                            <Icon name="sliders" size={20} className="text-orange-500" /> 參數輸入
+                                        </h2>
                                         <button 
                                             onClick={reset} 
                                             className="text-base font-black text-red-600 border-2 border-red-500 hover:bg-red-50 px-5 py-2 rounded-xl transition-all flex items-center gap-1 shadow-sm active:scale-95"
                                         >
-                                            <Icon name="trash-2" size={16} /> 重置數據
+                                            <Icon name="trash-2" size={16} /> 重置
                                         </button>
                                     </div>
 
@@ -241,12 +248,12 @@
                                             <input 
                                                 type="number" 
                                                 readOnly={calcTarget === 'distance'}
-                                                value={tableType === 'track' ? (distance ? parseFloat(distance)*1000 : '') : distance}
+                                                value={tableType === 'track' ? (distance ? (parseFloat(distance)*1000).toFixed(0) : '') : distance}
                                                 onChange={(e) => {
                                                     const val = e.target.value;
-                                                    setDistance(tableType === 'track' ? (val ? parseFloat(val)/1000 : '') : val);
+                                                    setDistance(tableType === 'track' ? (val ? (parseFloat(val)/1000).toString() : '') : val);
                                                 }}
-                                                placeholder={calcTarget === 'distance' ? '計算結果將填入' : '請輸入'}
+                                                placeholder={calcTarget === 'distance' ? '等待計算...' : '請輸入'}
                                                 className={`bg-transparent w-full text-2xl font-black outline-none ${calcTarget === 'distance' ? 'text-orange-600' : 'text-slate-800 placeholder:text-slate-200'}`}
                                             />
                                             <span className={`font-bold ${calcTarget === 'distance' ? 'text-orange-400' : 'text-slate-400'}`}>{tableType === 'road' ? 'km' : 'm'}</span>
@@ -309,7 +316,7 @@
                                                 <input type="number" readOnly={calcTarget === 'pace'} value={paceSec} onChange={e => setPaceSec(e.target.value)} className={`w-full bg-transparent text-xl font-black text-center outline-none ${calcTarget === 'pace' ? 'text-orange-600' : 'text-slate-800'}`} placeholder="0" />
                                                 <span className={`absolute bottom-0 right-1 text-[9px] font-bold leading-none pointer-events-none ${calcTarget === 'pace' ? 'text-orange-400' : 'text-slate-400'}`}>秒</span>
                                             </div>
-                                            <div className={`flex items-center px-2 font-bold pt-3 ${calcTarget === 'pace' ? 'text-orange-400' : 'text-slate-400'}`}>/ km</div>
+                                            <div className={`flex items-center px-2 font-bold whitespace-nowrap pt-3 ${calcTarget === 'pace' ? 'text-orange-400' : 'text-slate-400'}`}>/ km</div>
                                         </div>
                                     </div>
 
@@ -351,9 +358,9 @@
                                         </div>
                                     </div>
                                 ) : (
-                                    <div className="bg-white p-12 rounded-3xl border-2 border-dashed border-slate-200 flex flex-col items-center justify-center text-slate-400 shadow-inner">
+                                    <div className="bg-white p-12 rounded-3xl border-2 border-dashed border-slate-200 flex flex-col items-center justify-center text-slate-400 shadow-inner text-center">
                                         <Icon name="play" size={48} className="mb-4 opacity-20" />
-                                        <p className="font-bold uppercase tracking-widest text-xs">請輸入數值後點擊「開始計算」</p>
+                                        <p className="font-bold uppercase tracking-widest text-xs">請輸入數值後點擊<br/>「開始計算」</p>
                                     </div>
                                 )}
 
@@ -364,9 +371,9 @@
                                         <h4 className="font-bold text-slate-700 text-lg">里程分段對照表</h4>
                                     </div>
 
-                                    <div className="p-8">
+                                    <div className="p-8 overflow-x-auto">
                                         {displayResults ? (
-                                            <div className={`grid grid-flow-col grid-cols-2 ${tableType === 'road' ? 'grid-rows-road' : 'grid-rows-track'} gap-x-12 gap-y-4`}>
+                                            <div className={`grid grid-flow-col grid-cols-2 ${tableType === 'road' ? 'grid-rows-road' : 'grid-rows-track'} gap-x-12 gap-y-4 min-w-[300px]`}>
                                                 {displayResults.splits.map((split, i) => {
                                                     const isMatch = Math.abs(split.km - displayResults.currentKm) < 0.0001;
                                                     return (
