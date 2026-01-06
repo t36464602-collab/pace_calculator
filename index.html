@@ -49,41 +49,31 @@
             grid-template-rows: repeat(4, minmax(0, 1fr));
         }
 
-        /* Logo 動畫：呼吸微光與極輕微縮放 */
+        /* 精緻 Logo 動畫 */
         @keyframes premium-pulse {
             0%, 100% { transform: scale(1); opacity: 1; filter: drop-shadow(0 0 0px rgba(255,255,255,0)); }
-            50% { transform: scale(1.02); opacity: 0.9; filter: drop-shadow(0 0 8px rgba(255,255,255,0.6)); }
+            50% { transform: scale(1.05); opacity: 0.9; filter: drop-shadow(0 0 8px rgba(255,255,255,0.6)); }
         }
         .logo-premium {
             animation: premium-pulse 4s ease-in-out infinite;
         }
     </style>
 </head>
-<body class="bg-slate-50">
+<body class="bg-slate-50 text-slate-900">
     <div id="root"></div>
 
     <script type="text/babel">
         const { useState, useEffect, useCallback, useRef } = React;
 
-        // 精緻版 Logo 組件：專業計時器環 + 銳利閃電
+        // 更新後的極簡 Logo：圓圈 + 閃電 (無圓點)
         const PacerLogo = ({ size = 32 }) => (
-            <div className="bg-gradient-to-br from-orange-400 to-orange-600 p-2 rounded-xl shadow-lg shadow-orange-200 flex items-center justify-center logo-premium">
+            <div className="bg-gradient-to-br from-orange-400 to-orange-600 p-2 rounded-xl shadow-lg shadow-orange-200 flex items-center justify-center logo-premium shrink-0">
                 <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    {/* 外環刻度感 */}
                     <circle cx="12" cy="12" r="10" stroke="white" strokeWidth="1" strokeDasharray="2 2" opacity="0.3" />
                     <path d="M12 2C17.5228 2 22 6.47715 22 12" stroke="white" strokeWidth="2.5" strokeLinecap="round" />
-                    
-                    {/* 內部指針點 */}
-                    <circle cx="12" cy="4.5" r="1" fill="white" />
-                    <circle cx="19.5" cy="12" r="1" fill="white" opacity="0.5" />
-                    
-                    {/* 精緻多邊形閃電 */}
                     <path 
                         d="M14 4.5L7 12.5H12L10 19.5L17 11.5H12L14 4.5Z" 
                         fill="white" 
-                        stroke="white" 
-                        strokeWidth="0.5" 
-                        strokeLinejoin="round" 
                     />
                 </svg>
             </div>
@@ -103,25 +93,29 @@
 
         const App = () => {
             const [tableType, setTableType] = useState('road');
-            const [distance, setDistance] = useState(''); 
+            // 使用 String 儲存輸入數值以避免精度跳動
+            const [distanceInput, setDistanceInput] = useState(''); 
             const [hours, setHours] = useState('');
             const [minutes, setMinutes] = useState('');
             const [seconds, setSeconds] = useState('');
             const [paceMin, setPaceMin] = useState('');
             const [paceSec, setPaceSec] = useState('');
+            
             const [displayResults, setDisplayResults] = useState(null);
             const [calcTarget, setCalcTarget] = useState('pace');
 
             const ROAD_MILESTONES = [1, 5, 10, 15, 20, 21.0975, 25, 30, 35, 40, 42.195];
             const TRACK_MILESTONES = [0.1, 0.2, 0.3, 0.4, 0.8, 1.0, 1.6, 2.0];
 
+            // 格式化時間邏輯
             const formatSecondsToTime = (totalSec, type) => {
                 if (!isFinite(totalSec) || totalSec < 0) return { h: 0, m: 0, s: 0, clock: "0:00" };
-                const h = Math.floor(totalSec / 3600);
-                const m = Math.floor((totalSec % 3600) / 60);
-                const s = Math.round(totalSec % 60);
+                const roundedTotalSec = Math.round(totalSec);
+                const h = Math.floor(roundedTotalSec / 3600);
+                const m = Math.floor((roundedTotalSec % 3600) / 60);
+                const s = roundedTotalSec % 60;
                 if (type === 'track') {
-                    const totalMin = Math.floor(totalSec / 60);
+                    const totalMin = Math.floor(roundedTotalSec / 60);
                     return { h: 0, m: totalMin, s, clock: `${totalMin}:${s.toString().padStart(2, '0')}` };
                 }
                 return {
@@ -132,15 +126,18 @@
 
             const formatPaceParts = (totalSec) => {
                 if (!isFinite(totalSec) || totalSec <= 0) return { m: 0, s: 0, str: "0'00\"" };
-                const m = Math.floor(totalSec / 60);
-                const s = Math.round(totalSec % 60);
+                const roundedPace = Math.round(totalSec);
+                const m = Math.floor(roundedPace / 60);
+                const s = roundedPace % 60;
                 return { m, s, str: `${m}'${s.toString().padStart(2, '0')}"` };
             };
 
+            // 開始計算
             const handleStartCalc = useCallback(() => {
-                let d = parseFloat(distance) || 0;
-                let t = (parseInt(hours) || 0) * 3600 + (parseInt(minutes) || 0) * 60 + (parseInt(seconds) || 0);
-                let p = (parseInt(paceMin) || 0) * 60 + (parseInt(paceSec) || 0);
+                // 獲取目前數值，確保不為負
+                let d = Math.max(0, tableType === 'track' ? (parseFloat(distanceInput) / 1000 || 0) : (parseFloat(distanceInput) || 0));
+                let t = Math.max(0, (parseInt(hours) || 0) * 3600 + (parseInt(minutes) || 0) * 60 + (parseInt(seconds) || 0));
+                let p = Math.max(0, (parseInt(paceMin) || 0) * 60 + (parseInt(paceSec) || 0));
 
                 let calcPace = p;
                 let calcTime = t;
@@ -162,7 +159,7 @@
                 } else if (calcTarget === 'distance') {
                     if (t > 0 && p > 0) {
                         calcDist = t / p;
-                        setDistance(tableType === 'track' ? calcDist.toFixed(3) : calcDist.toFixed(2));
+                        setDistanceInput(tableType === 'track' ? Math.round(calcDist * 1000).toString() : calcDist.toFixed(2));
                     }
                 }
 
@@ -191,15 +188,15 @@
                     unit: tableType === 'road' ? 'km' : 'm',
                     timeLabel: tableType === 'road' ? '總計時間' : '單組時間'
                 });
-            }, [distance, hours, minutes, seconds, paceMin, paceSec, calcTarget, tableType]);
+            }, [distanceInput, hours, minutes, seconds, paceMin, paceSec, calcTarget, tableType]);
 
             const reset = () => {
-                setDistance(''); setHours(''); setMinutes(''); setSeconds(''); setPaceMin(''); setPaceSec('');
+                setDistanceInput(''); setHours(''); setMinutes(''); setSeconds(''); setPaceMin(''); setPaceSec('');
                 setDisplayResults(null);
             };
 
             return (
-                <div className="min-h-screen p-3 md:p-8 bg-slate-50">
+                <div className="min-h-screen p-3 md:p-8 bg-slate-50 text-slate-900">
                     <div className="max-w-6xl mx-auto space-y-6 md:space-y-8">
                         
                         {/* Header */}
@@ -213,201 +210,146 @@
                             </div>
 
                             <div className="bg-white p-1.5 rounded-2xl shadow-sm border border-slate-200 flex w-full md:w-auto">
-                                <button 
-                                    onClick={() => {setTableType('road'); reset();}}
-                                    className={`flex-1 md:px-8 py-2.5 rounded-xl text-sm font-black transition-all ${tableType === 'road' ? 'bg-slate-900 text-white shadow-lg' : 'text-slate-500 hover:bg-slate-50'}`}
-                                >
-                                    路跑模式
-                                </button>
-                                <button 
-                                    onClick={() => {setTableType('track'); reset();}}
-                                    className={`flex-1 md:px-8 py-2.5 rounded-xl text-sm font-black transition-all ${tableType === 'track' ? 'bg-slate-900 text-white shadow-lg' : 'text-slate-500 hover:bg-slate-50'}`}
-                                >
-                                    田徑場模式
-                                </button>
+                                <button onClick={() => {setTableType('road'); reset();}} className={`flex-1 md:px-8 py-2.5 rounded-xl text-sm font-black transition-all ${tableType === 'road' ? 'bg-slate-900 text-white shadow-lg' : 'text-slate-500 hover:bg-slate-50'}`}>路跑模式</button>
+                                <button onClick={() => {setTableType('track'); reset();}} className={`flex-1 md:px-8 py-2.5 rounded-xl text-sm font-black transition-all ${tableType === 'track' ? 'bg-slate-900 text-white shadow-lg' : 'text-slate-500 hover:bg-slate-50'}`}>田徑場模式</button>
                             </div>
                         </header>
 
                         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 md:gap-8">
                             
-                            {/* Left Column: Inputs */}
+                            {/* Inputs Panel */}
                             <div className="lg:col-span-4 space-y-6">
                                 <div className="bg-white p-5 md:p-6 rounded-3xl shadow-sm border border-slate-200 space-y-6 md:space-y-8">
                                     <div className="flex items-center justify-between border-b pb-4">
                                         <h2 className="font-bold flex items-center gap-2">
                                             <Icon name="sliders" size={18} className="text-orange-500" /> 參數輸入
                                         </h2>
-                                        <button 
-                                            onClick={reset} 
-                                            className="text-sm font-black text-red-600 border-2 border-red-500/30 hover:border-red-500 hover:bg-red-50 px-4 py-1.5 rounded-xl transition-all flex items-center gap-1 active:scale-95"
-                                        >
-                                            <Icon name="trash-2" size={14} /> 重置
+                                        <button onClick={reset} className="text-sm font-black text-red-600 border-2 border-red-500/30 hover:border-red-500 hover:bg-red-50 px-4 py-1.5 rounded-xl transition-all flex items-center gap-1 active:scale-95">
+                                            <Icon name="trash-2" size={14} /> 重置數據
                                         </button>
                                     </div>
 
-                                    {/* Distance Input */}
+                                    {/* Distance */}
                                     <div className="space-y-3">
-                                        <div className="flex justify-between items-center gap-2">
-                                            <div className="flex items-center gap-2">
-                                                <button 
-                                                    onClick={() => setCalcTarget('distance')}
-                                                    className={`flex items-center gap-1 px-3 py-1 rounded-full text-[10px] font-black uppercase transition-all shadow-sm ${calcTarget === 'distance' ? 'bg-orange-500 text-white' : 'bg-slate-100 text-slate-400 hover:bg-slate-200'}`}
-                                                >
-                                                    <Icon name="target" size={10} className={calcTarget === 'distance' ? 'text-white' : 'text-slate-400'} /> 計算
+                                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-2">
+                                            <div className="flex items-center gap-2 shrink-0">
+                                                <button onClick={() => setCalcTarget('distance')} className={`flex items-center gap-1 px-3 py-1 rounded-full text-[10px] font-black uppercase transition-all shadow-sm ${calcTarget === 'distance' ? 'bg-orange-500 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}>
+                                                    <Icon name="target" size={10} className={calcTarget === 'distance' ? 'text-white' : 'text-slate-700'} /> 計算
                                                 </button>
-                                                <label className={`text-xs font-black uppercase tracking-widest ${calcTarget === 'distance' ? 'text-orange-500' : 'text-slate-400'}`}>目標距離</label>
+                                                <label className="text-xs font-black uppercase tracking-widest text-slate-700">目標距離</label>
                                             </div>
-                                            <div className="flex flex-wrap gap-1 justify-end max-w-[60%]">
+                                            <div className="flex flex-wrap gap-1 justify-end">
                                                 {(tableType === 'road' ? [1, 5, 10, 21.0975, 42.195] : [200, 400, 800, 1600]).map(btn => (
-                                                    <button 
-                                                        key={btn}
-                                                        disabled={calcTarget === 'distance'}
-                                                        onClick={() => setDistance(tableType === 'track' ? (btn/1000).toString() : btn.toString())}
-                                                        className={`text-[9px] md:text-[10px] px-2.5 py-1 rounded-lg font-bold transition-colors ${calcTarget === 'distance' ? 'bg-slate-50 text-slate-300' : 'bg-slate-100 hover:bg-orange-500 hover:text-white text-slate-600'}`}
-                                                    >
+                                                    <button key={btn} disabled={calcTarget === 'distance'} onClick={() => setDistanceInput(btn.toString())} className={`text-[9px] md:text-[10px] px-2.5 py-1 rounded-lg font-bold transition-colors ${calcTarget === 'distance' ? 'bg-slate-50 text-slate-300' : 'bg-slate-100 hover:bg-orange-500 hover:text-white text-slate-600'}`}>
                                                         {btn === 21.0975 ? '半馬' : btn === 42.195 ? '全馬' : btn}{tableType === 'road' && btn !== 21.0975 && btn !== 42.195 ? 'k' : (tableType === 'track' ? 'm' : '')}
                                                     </button>
                                                 ))}
                                             </div>
                                         </div>
                                         <div className={`flex items-center bg-slate-50 border-2 rounded-2xl p-4 transition-all ${calcTarget === 'distance' ? 'border-orange-500 bg-orange-50 shadow-inner' : 'border-transparent focus-within:border-slate-300 shadow-inner'}`}>
-                                            <input 
-                                                type="number" 
-                                                readOnly={calcTarget === 'distance'}
-                                                value={tableType === 'track' ? (distance ? (parseFloat(distance)*1000).toFixed(0) : '') : distance}
-                                                onChange={(e) => {
-                                                    const val = e.target.value;
-                                                    setDistance(tableType === 'track' ? (val ? (parseFloat(val)/1000).toString() : '') : val);
-                                                }}
-                                                placeholder={calcTarget === 'distance' ? '計算中' : '0'}
-                                                className={`bg-transparent w-full text-2xl font-black outline-none ${calcTarget === 'distance' ? 'text-orange-600' : 'text-slate-800 placeholder:text-slate-200'}`}
-                                            />
+                                            <input type="number" min="0" readOnly={calcTarget === 'distance'} value={distanceInput} onChange={(e) => setDistanceInput(e.target.value)} placeholder="0" className={`bg-transparent w-full text-2xl font-black outline-none ${calcTarget === 'distance' ? 'text-orange-600' : 'text-slate-800'}`} />
                                             <span className={`font-bold ${calcTarget === 'distance' ? 'text-orange-400' : 'text-slate-400'}`}>{tableType === 'road' ? 'km' : 'm'}</span>
                                         </div>
                                     </div>
 
-                                    {/* Time Input */}
+                                    {/* Time */}
                                     <div className="space-y-3">
                                         <div className="flex items-center gap-2">
-                                            <button 
-                                                onClick={() => setCalcTarget('time')}
-                                                className={`flex items-center gap-1 px-3 py-1 rounded-full text-[10px] font-black uppercase transition-all shadow-sm ${calcTarget === 'time' ? 'bg-orange-500 text-white' : 'bg-slate-100 text-slate-400 hover:bg-slate-200'}`}
-                                            >
-                                                <Icon name="target" size={10} className={calcTarget === 'time' ? 'text-white' : 'text-slate-400'} /> 計算
+                                            <button onClick={() => setCalcTarget('time')} className={`flex items-center gap-1 px-3 py-1 rounded-full text-[10px] font-black uppercase transition-all shadow-sm ${calcTarget === 'time' ? 'bg-orange-500 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}>
+                                                <Icon name="target" size={10} className={calcTarget === 'time' ? 'text-white' : 'text-slate-700'} /> 計算
                                             </button>
-                                            <label className={`text-xs font-black uppercase tracking-widest ${calcTarget === 'time' ? 'text-orange-500' : 'text-slate-400'}`}>
-                                                {tableType === 'road' ? '總時間' : '單組時間'}
-                                            </label>
+                                            <label className="text-xs font-black uppercase tracking-widest text-slate-700">{tableType === 'road' ? '總時間' : '單組時間'}</label>
                                         </div>
                                         <div className={`flex items-center justify-between p-3 rounded-2xl border-2 transition-all ${calcTarget === 'time' ? 'border-orange-500 bg-orange-50 shadow-inner' : 'border-slate-50 bg-slate-50 shadow-inner'}`}>
                                             {tableType === 'road' && (
-                                                <>
-                                                    <div className="flex-1 relative h-10 flex items-center">
-                                                        <input type="number" readOnly={calcTarget === 'time'} value={hours} onChange={e => setHours(e.target.value)} className={`w-full bg-transparent text-xl font-black text-center outline-none ${calcTarget === 'time' ? 'text-orange-600' : 'text-slate-800'}`} placeholder="0" />
-                                                        <span className={`absolute bottom-0 right-1 text-[8px] font-bold pointer-events-none ${calcTarget === 'time' ? 'text-orange-400' : 'text-slate-400'}`}>時</span>
-                                                    </div>
-                                                    <div className="flex items-center px-1"><span className="text-xl font-black text-slate-300">:</span></div>
-                                                </>
+                                                <><div className="flex-1 relative h-10 flex items-center">
+                                                    <input type="number" min="0" readOnly={calcTarget === 'time'} value={hours} onChange={e => setHours(e.target.value)} className={`w-full bg-transparent text-xl font-black text-center outline-none ${calcTarget === 'time' ? 'text-orange-600' : 'text-slate-800'}`} placeholder="0" />
+                                                    <span className="absolute bottom-0 right-1 text-[8px] font-bold text-slate-400">時</span>
+                                                </div><div className="px-1"><span className="text-xl font-black text-slate-300">:</span></div></>
                                             )}
                                             <div className="flex-1 relative h-10 flex items-center">
-                                                <input type="number" readOnly={calcTarget === 'time'} value={minutes} onChange={e => setMinutes(e.target.value)} className={`w-full bg-transparent text-xl font-black text-center outline-none ${calcTarget === 'time' ? 'text-orange-600' : 'text-slate-800'}`} placeholder="0" />
-                                                <span className={`absolute bottom-0 right-1 text-[8px] font-bold pointer-events-none ${calcTarget === 'time' ? 'text-orange-400' : 'text-slate-400'}`}>分</span>
+                                                <input type="number" min="0" readOnly={calcTarget === 'time'} value={minutes} onChange={e => setMinutes(e.target.value)} className={`w-full bg-transparent text-xl font-black text-center outline-none ${calcTarget === 'time' ? 'text-orange-600' : 'text-slate-800'}`} placeholder="0" />
+                                                <span className="absolute bottom-0 right-1 text-[8px] font-bold text-slate-400">分</span>
                                             </div>
-                                            <div className="flex items-center px-1"><span className="text-xl font-black text-slate-300">:</span></div>
+                                            <div className="px-1"><span className="text-xl font-black text-slate-300">:</span></div>
                                             <div className="flex-1 relative h-10 flex items-center">
-                                                <input type="number" readOnly={calcTarget === 'time'} value={seconds} onChange={e => setSeconds(e.target.value)} className={`w-full bg-transparent text-xl font-black text-center outline-none ${calcTarget === 'time' ? 'text-orange-600' : 'text-slate-800'}`} placeholder="0" />
-                                                <span className={`absolute bottom-0 right-1 text-[8px] font-bold pointer-events-none ${calcTarget === 'time' ? 'text-orange-400' : 'text-slate-400'}`}>秒</span>
+                                                <input type="number" min="0" readOnly={calcTarget === 'time'} value={seconds} onChange={e => setSeconds(e.target.value)} className={`w-full bg-transparent text-xl font-black text-center outline-none ${calcTarget === 'time' ? 'text-orange-600' : 'text-slate-800'}`} placeholder="0" />
+                                                <span className="absolute bottom-0 right-1 text-[8px] font-bold text-slate-400">秒</span>
                                             </div>
                                         </div>
                                     </div>
 
-                                    {/* Pace Input */}
+                                    {/* Pace */}
                                     <div className="space-y-3">
                                         <div className="flex items-center gap-2">
-                                            <button 
-                                                onClick={() => setCalcTarget('pace')}
-                                                className={`flex items-center gap-1 px-3 py-1 rounded-full text-[10px] font-black uppercase transition-all shadow-sm ${calcTarget === 'pace' ? 'bg-orange-500 text-white' : 'bg-slate-100 text-slate-400 hover:bg-slate-200'}`}
-                                            >
-                                                <Icon name="target" size={10} className={calcTarget === 'pace' ? 'text-white' : 'text-slate-400'} /> 計算
+                                            <button onClick={() => setCalcTarget('pace')} className={`flex items-center gap-1 px-3 py-1 rounded-full text-[10px] font-black uppercase transition-all shadow-sm ${calcTarget === 'pace' ? 'bg-orange-500 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}>
+                                                <Icon name="target" size={10} className={calcTarget === 'pace' ? 'text-white' : 'text-slate-700'} /> 計算
                                             </button>
-                                            <label className={`text-xs font-black uppercase tracking-widest ${calcTarget === 'pace' ? 'text-orange-500' : 'text-slate-400'}`}>平均配速</label>
+                                            <label className="text-xs font-black uppercase tracking-widest text-slate-700">平均配速</label>
                                         </div>
                                         <div className={`flex items-center justify-between p-3 rounded-2xl border-2 transition-all ${calcTarget === 'pace' ? 'border-orange-500 bg-orange-50 shadow-inner' : 'border-slate-50 bg-slate-50 shadow-inner'}`}>
                                             <div className="flex-1 relative h-10 flex items-center">
-                                                <input type="number" readOnly={calcTarget === 'pace'} value={paceMin} onChange={e => setPaceMin(e.target.value)} className={`w-full bg-transparent text-xl font-black text-center outline-none ${calcTarget === 'pace' ? 'text-orange-600' : 'text-slate-800'}`} placeholder="0" />
-                                                <span className={`absolute bottom-0 right-1 text-[8px] font-bold pointer-events-none ${calcTarget === 'pace' ? 'text-orange-400' : 'text-slate-400'}`}>分</span>
+                                                <input type="number" min="0" readOnly={calcTarget === 'pace'} value={paceMin} onChange={e => setPaceMin(e.target.value)} className={`w-full bg-transparent text-xl font-black text-center outline-none ${calcTarget === 'pace' ? 'text-orange-600' : 'text-slate-800'}`} placeholder="0" />
+                                                <span className="absolute bottom-0 right-1 text-[8px] font-bold text-slate-400">分</span>
                                             </div>
-                                            <div className="flex items-center px-1"><span className="text-xl font-black text-slate-300">:</span></div>
+                                            <div className="px-1"><span className="text-xl font-black text-slate-300">:</span></div>
                                             <div className="flex-1 relative h-10 flex items-center">
-                                                <input type="number" readOnly={calcTarget === 'pace'} value={paceSec} onChange={e => setPaceSec(e.target.value)} className={`w-full bg-transparent text-xl font-black text-center outline-none ${calcTarget === 'pace' ? 'text-orange-600' : 'text-slate-800'}`} placeholder="0" />
-                                                <span className={`absolute bottom-0 right-1 text-[8px] font-bold pointer-events-none ${calcTarget === 'pace' ? 'text-orange-400' : 'text-slate-400'}`}>秒</span>
+                                                <input type="number" min="0" readOnly={calcTarget === 'pace'} value={paceSec} onChange={e => setPaceSec(e.target.value)} className={`w-full bg-transparent text-xl font-black text-center outline-none ${calcTarget === 'pace' ? 'text-orange-600' : 'text-slate-800'}`} placeholder="0" />
+                                                <span className="absolute bottom-0 right-1 text-[8px] font-bold text-slate-400">秒</span>
                                             </div>
-                                            <div className={`flex items-center px-2 font-bold pt-3 ${calcTarget === 'pace' ? 'text-orange-400' : 'text-slate-400'}`}>/ km</div>
+                                            <div className="px-2 font-bold pt-3 text-slate-400">/ km</div>
                                         </div>
                                     </div>
 
-                                    {/* Action Button */}
-                                    <button 
-                                        onClick={handleStartCalc}
-                                        className="w-full bg-orange-500 hover:bg-orange-600 text-white font-black py-4 md:py-5 rounded-2xl shadow-xl shadow-orange-200 transition-all active:scale-[0.98] flex items-center justify-center gap-3 text-lg md:text-xl ring-4 ring-orange-500/10"
-                                    >
+                                    <button onClick={handleStartCalc} className="w-full bg-orange-500 hover:bg-orange-600 text-white font-black py-4 md:py-5 rounded-2xl shadow-xl shadow-orange-200 transition-all active:scale-[0.98] flex items-center justify-center gap-3 text-lg md:text-xl ring-4 ring-orange-500/10">
                                         <Icon name="play" size={20} className="fill-current" /> 開始計算結果
                                     </button>
                                 </div>
                             </div>
 
-                            {/* Right Column: Display Results */}
+                            {/* Results Panel */}
                             <div className="lg:col-span-8 flex flex-col gap-6">
-                                
-                                {/* Result Display Cards */}
                                 {displayResults ? (
                                     <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
-                                        <div className={`p-5 md:p-6 rounded-3xl border-2 transition-all shadow-xl relative overflow-hidden group ${displayResults.mode === 'distance' ? 'bg-gradient-to-br from-orange-500 to-orange-600 border-orange-400 text-white' : 'bg-white border-slate-200 text-slate-900 shadow-sm'}`}>
-                                            <div className={`text-[10px] font-black uppercase mb-1 tracking-tighter ${displayResults.mode === 'distance' ? 'text-orange-100' : 'text-slate-400'}`}>目標距離</div>
-                                            <div className="text-3xl md:text-4xl font-black tracking-tight">{displayResults.dist} <span className={`text-sm font-bold ${displayResults.mode === 'distance' ? 'text-orange-200' : 'text-slate-400'}`}>{displayResults.unit}</span></div>
+                                        <div className={`p-5 md:p-6 rounded-3xl border-2 shadow-xl relative overflow-hidden ${displayResults.mode === 'distance' ? 'bg-gradient-to-br from-orange-500 to-orange-600 border-orange-400 text-white' : 'bg-white border-slate-200 text-slate-900'}`}>
+                                            <div className={`text-[10px] font-black uppercase mb-1 ${displayResults.mode === 'distance' ? 'text-orange-100' : 'text-slate-400'}`}>目標距離</div>
+                                            <div className="text-3xl md:text-4xl font-black">{displayResults.dist} <span className="text-sm font-bold opacity-60">{displayResults.unit}</span></div>
                                             {displayResults.mode === 'distance' && <div className="absolute top-0 right-0 px-2 py-0.5 bg-white text-orange-600 text-[8px] font-black rounded-bl-xl shadow-sm">推算結果</div>}
                                         </div>
-                                        
-                                        <div className={`p-5 md:p-6 rounded-3xl border-2 transition-all shadow-xl relative overflow-hidden group ${displayResults.mode === 'time' ? 'bg-gradient-to-br from-orange-500 to-orange-600 border-orange-400 text-white' : 'bg-white border-slate-200 text-slate-900 shadow-sm'}`}>
-                                            <div className={`text-[10px] font-black uppercase mb-1 tracking-tighter ${displayResults.mode === 'time' ? 'text-orange-100' : 'text-slate-400'}`}>{displayResults.timeLabel}</div>
-                                            <div className="text-3xl md:text-4xl font-black tracking-tight">{displayResults.time}</div>
+                                        <div className={`p-5 md:p-6 rounded-3xl border-2 shadow-xl relative overflow-hidden ${displayResults.mode === 'time' ? 'bg-gradient-to-br from-orange-500 to-orange-600 border-orange-400 text-white' : 'bg-white border-slate-200 text-slate-900'}`}>
+                                            <div className={`text-[10px] font-black uppercase mb-1 ${displayResults.mode === 'time' ? 'text-orange-100' : 'text-slate-400'}`}>{displayResults.timeLabel}</div>
+                                            <div className="text-3xl md:text-4xl font-black">{displayResults.time}</div>
                                             {displayResults.mode === 'time' && <div className="absolute top-0 right-0 px-2 py-0.5 bg-white text-orange-600 text-[8px] font-black rounded-bl-xl shadow-sm">推算結果</div>}
                                         </div>
-
-                                        <div className={`p-5 md:p-6 rounded-3xl border-2 transition-all shadow-xl relative overflow-hidden group ${displayResults.mode === 'pace' ? 'bg-gradient-to-br from-orange-500 to-orange-600 border-orange-400 text-white' : 'bg-white border-slate-200 text-slate-900 shadow-sm'}`}>
+                                        <div className={`p-5 md:p-6 rounded-3xl border-2 shadow-xl relative overflow-hidden ${displayResults.mode === 'pace' ? 'bg-gradient-to-br from-orange-500 to-orange-600 border-orange-400 text-white' : 'bg-white border-slate-200 text-slate-900'}`}>
                                             <div className="flex justify-between items-start">
-                                                <div className={`text-[10px] font-black uppercase mb-1 tracking-tighter ${displayResults.mode === 'pace' ? 'text-orange-100' : 'text-slate-400'}`}>平均配速</div>
+                                                <div className={`text-[10px] font-black uppercase mb-1 ${displayResults.mode === 'pace' ? 'text-orange-100' : 'text-slate-400'}`}>平均配速</div>
                                                 <div className={`${displayResults.mode === 'pace' ? 'bg-white/20' : 'bg-orange-500'} backdrop-blur-md text-white text-[9px] px-1.5 py-0.5 rounded-full font-black border border-white/20`}>{displayResults.kmh} km/h</div>
                                             </div>
-                                            <div className="text-3xl md:text-4xl font-black tracking-tight">{displayResults.pace} <span className={`text-sm font-bold ${displayResults.mode === 'pace' ? 'text-orange-200' : 'text-slate-400'}`}>/km</span></div>
+                                            <div className="text-3xl md:text-4xl font-black">{displayResults.pace} <span className="text-sm font-bold opacity-60">/km</span></div>
                                             {displayResults.mode === 'pace' && <div className="absolute top-0 right-0 px-2 py-0.5 bg-white text-orange-600 text-[8px] font-black rounded-bl-xl shadow-sm">推算結果</div>}
                                         </div>
                                     </div>
                                 ) : (
-                                    <div className="bg-white p-10 md:p-12 rounded-3xl border-2 border-dashed border-slate-200 flex flex-col items-center justify-center text-slate-400 shadow-inner text-center">
+                                    <div className="bg-white p-10 md:p-12 rounded-3xl border-2 border-dashed border-slate-200 flex flex-col items-center justify-center text-slate-400 shadow-inner">
                                         <Icon name="play" size={40} className="mb-4 opacity-20" />
-                                        <p className="font-bold uppercase tracking-widest text-xs">請輸入數值後點擊「開始計算」</p>
+                                        <p className="font-bold uppercase tracking-widest text-xs text-center">輸入數值後點擊「開始計算」</p>
                                     </div>
                                 )}
 
-                                {/* Split Table */}
                                 <div className="flex-grow bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden flex flex-col">
-                                    <div className="flex items-center gap-2 px-6 py-4 md:py-5 border-b bg-slate-50/50">
+                                    <div className="flex items-center gap-2 px-6 py-4 border-b bg-slate-50/50">
                                         <Icon name="list-ordered" size={18} className="text-orange-500" />
-                                        <h4 className="font-bold text-slate-700 text-base md:text-lg">里程分段對照表</h4>
+                                        <h4 className="font-bold text-slate-700">里程分段對照表</h4>
                                     </div>
-
                                     <div className="p-4 md:p-8">
                                         {displayResults ? (
-                                            <div className={`grid grid-flow-col grid-cols-2 ${tableType === 'road' ? 'grid-rows-road' : 'grid-rows-track'} gap-x-4 md:gap-x-12 gap-y-0.5`}>
+                                            <div className={`grid grid-flow-col grid-cols-2 ${tableType === 'road' ? 'grid-rows-road' : 'grid-rows-track'} gap-x-4 gap-y-0.5`}>
                                                 {displayResults.splits.map((split, i) => {
                                                     const isMatch = Math.abs(split.km - displayResults.currentKm) < 0.0001;
                                                     return (
-                                                        <div 
-                                                            key={i} 
-                                                            className={`flex items-center justify-between py-3 px-3.5 rounded-xl transition-all ${isMatch ? 'bg-orange-500 text-white shadow-lg scale-[1.02]' : 'border-b border-slate-50 hover:bg-orange-50/50'}`}
-                                                        >
-                                                            <span className={`text-[10px] md:text-[11px] font-bold uppercase truncate mr-2 ${isMatch ? 'text-orange-50' : 'text-slate-400'}`}>{split.label}</span>
+                                                        <div key={i} className={`flex items-center justify-between py-3 px-3.5 rounded-xl transition-all ${isMatch ? 'bg-orange-500 text-white shadow-lg' : 'border-b border-slate-50 hover:bg-orange-50/50'}`}>
+                                                            <span className={`text-[10px] md:text-[11px] font-bold uppercase mr-2 whitespace-normal flex-1 ${isMatch ? 'text-orange-50' : 'text-slate-400'}`}>{split.label}</span>
                                                             <span className={`text-base md:text-xl font-mono-run font-black ${isMatch ? 'text-white' : 'text-slate-800'}`}>{split.clock}</span>
                                                         </div>
                                                     );
@@ -417,7 +359,6 @@
                                             <div className="py-20 text-center text-slate-300 italic font-medium">按下計算後將產生詳細分段對照表</div>
                                         )}
                                     </div>
-
                                     <div className="p-4 bg-slate-50 border-t mt-auto flex items-center justify-end">
                                         <div className="text-[10px] text-slate-300 font-black tracking-widest uppercase">Pacer Pro Engine</div>
                                     </div>
